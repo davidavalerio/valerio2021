@@ -18,11 +18,11 @@ import seaborn as sns
 # Initial moles of all isotopologues in relavent species
 Os0 = 1 # O strat – initial moles, any small value works
 O1Ds0 = 1 # O(1D) strat – initial moles, any small value works
-O2s0 = 1 # O2 strat – initial moles, any small value works
-CO2s0 = 4.8e15 # CO2 strat – initial moles, fixes mixing ratio of CO2
+O2s0 = 29 # O2 strat – initial moles, any small value works
+CO2s0 = 4.8e15 * (294/270) # CO2 strat – initial moles, fixes mixing ratio of CO2
 O3s0 = 10 # O3 strat – initial moles, any small value works
 O2t0 = 100 # O2 trop – initial moles, any small value works
-CO2t0 = 4.8e16 # CO2 trop – intial moles, 400ppm = 7.2e16
+CO2t0 = 4.8e16 * (294/270) # CO2 trop – intial moles, 400ppm = 7.2e16
 O2b0 = 1.83e19 # O2 bio – from H2O initial moles, not used when H2O is infinite
 O2g0 = 2e17 # O2 geo – moles available for oxidation by O2 trop
 
@@ -37,7 +37,7 @@ rQ = 0.002044928
 rX = 0.000370894
 
 # 18O/16O (rQ) and 17O/16O (rX) of VSMOW
-#rQ = 0.0020052
+rQSMOW = 0.0020052
 #rX = 0.0003799
 
 # Fractional abundance of 18O and 17O from isotope ratios
@@ -95,10 +95,11 @@ O2g0 = O2g0 - OQg0 - OXg0
 # Fractionation factors from Young 2014
 tresp = 0.5149 # global average respiration theta
 twater = 0.528 # nominal TOI equilibration slope
-isowater = 1 / 1.00525 # evapotranspiration discimination
+isowater = 1.00525 # isotopic composition of water after evapotranspiration
 alphari = 1 / 1.0182 # discrimination during respiration
-alphar = 0.9770279689 # from Young 2014 Fortran code 
-#alphar = isowater * alphari  # respiration fractionation factor
+#alphar = 0.9770279689 # from Young 2014 Fortran code 
+alphar = 1 / isowater * alphari  # respiration fractionation factor
+alphaCO2H2O = 1.0413 # from Beck et al. 2005
 
 # Moles of air in atmosphere from Young 2014
 airs = 1.8e19 # moles of air in the stratosphere
@@ -133,24 +134,24 @@ k14 = 0.1 # trop-strat mixing rate constant yr^-1
 
 # Rate constants for all relevant reactions in mol/yr from initial spreadsheet
 KMIF = 1.065 # MIF for O3 formation
-K1 = 3e-05 # O2 + PHO -> O + O mol/yr
-K2 = 3e-05 # OQ + PHO -> Q + O mol/yr
-K3 = 3e-5 # OX + PHO -> X + O mol/yr
+K1 = 3e-5 # O2 + PHO -> O + O mol/yr
+K2 = K1 # OQ + PHO -> Q + O mol/yr
+K3 = K1 # OX + PHO -> X + O mol/yr
 K4 = 4.6548631e-10 # O2 + O -> O3 mol/yr
 K5 = KMIF * 4.4787551e-10 # O2 + Q -> OOQ mol/yr
 K6 = KMIF * 4.562281e-10 # O2 + X -> OOX mol/yr
 K7 = KMIF * 4.6088952e-10 # OQ + O -> OOQ mol/yr
 K8 = KMIF * 4.6311901e-10 # OX + O -> OOX mol/yr
-K9 = 10000 # O3 + PHO -> O2 + O mol/yr
+K9 = 1000 # O3 + PHO -> O2 + O mol/yr
 K10 = K9 * (1/3) # OOQ + PHO -> O2 + mol/yr
 K11 = K9 * (2/3) # OOQ + PHO -> OQ + O mol/yr
 K12 = K9 * (1/3) # OOX + PHO -> O2 + X mol/yr
 K13 = K9 * (2/3) # OOX + PHO -> OX + O mol/yr
 K14 = 15768 # O3 + PHO -> O2 + O1D mol/yr
-K15 = 5256.105 # OOQ + PHO -> O2 + Q1D mol/yr
-K16 = 10511.9 # OOQ + PHO -> OQ + O1D mol/yr
-K17 = 5256.105 # OOX + PHO -> O2 + X1D mol/yr
-K18 = 10511.9 # OOX + PHO -> OX + O1D mol/yr
+K15 = K14 * (1/3) # OOQ + PHO -> O2 + Q1D mol/yr
+K16 = K14 * (2/3) # OOQ + PHO -> OQ + O1D mol/yr
+K17 = K14 * (1/3) # OOX + PHO -> O2 + X1D mol/yr
+K18 = K14 * (2/3) # OOX + PHO -> OX + O1D mol/yr
 K19 = 4.6548631e-10 # O3 + O -> O2 + O2 mol/yr
 K20 = 4.6314754e-10 # OOQ + O -> O2 + OQ mol/yr
 K21 = 4.6429202e-10 # OOX + O -> O2 + OX mol/yr
@@ -210,7 +211,6 @@ def tomol(cm3s):
     return tomol
 
 # Calculate reaction rates (mol/yr) from reaction rates (cm3/s) stated in paper
-
 #K19 = tomol(6.86e-15) # O3 + O -> O2 + O2 1/(yr mol)
 #K20 = K19 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O -> O2 + OQ 1/(yr mol)
 #K21 = K19 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mX, mO)) # OOX + O -> O2 + OX 1/(yr mol)
@@ -251,7 +251,12 @@ def tomol(cm3s):
                          #rm((mC + mO + mX), mO)) # COX + O1D -> CO2 + X 1/(yr mol)
 #K55 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
                          #rm((mC + mO + mX), mO)) # COX + O1D -> COX + O 1/(yr mol)
-
+                         
+# Calculate hydrosphere rate constants (mol/yr) from reaction rates (cm3/s) stated in paper
+#kr9 = alphaCO2H2O ** isowater * rQSMOW  # CO2 + H2Q -> COQ + H2O  mol/yr
+#kr10 = # COQ + H2O -> CO2 + H2Q mol/yr
+#kr11 = # CO2 + H2X -> COX + H2O mol/yr
+#kr12 = # COX + H2O -> CO2 + H2X mol/yr
 
 #%% Solve the system of differential equations
 
@@ -369,7 +374,6 @@ def f(y, t):
     kOQsO = (K2 + K7 * Osi + K44 * Osi + k41)
     dOQs = kOQsI - OQsi * kOQsO
     
-    ### Differential equations describing CO2 species in stratosphere
     # CO2 Stratosphere
     kCO2sI = (K47 * CO2si * O1Dsi + K48 * CO2si * Q1Dsi + K50 * COQsi * O1Dsi +
               K52 * CO2si * X1Dsi + K54 * COXsi * O1Dsi + k14 * CO2ti)
@@ -599,7 +603,7 @@ def xO3(O3, OOX, OOQ, air):
 
 # D17O XO3 molar flux in per mil moles CO2/yr
 def xJ(xCO2s, capDCO2s, airs, k41):
-    xJ = xCO2s * capDCO2s * airs / (1 / k41)
+    xJ = (xCO2s * capDCO2s * airs) / (1 / k41)
     return xJ
 
 # Calculate mole fraction of O2 in the troposphere
@@ -615,7 +619,7 @@ xCO2s = xCO2(moles.loc['CO2s'], moles.loc['COXs'], moles.loc['COQs'], airs)
 xO3s = xO3(moles.loc['O3s'], moles.loc['OOXs'], moles.loc['OOQs'], airs)
 
 # Calculate D17O flux
-xJ = xJ(xCO2t, D17_CO2t, airs, k41)
+xJ = xJ(xCO2s, D17_CO2s, airs, k41)
 
 # Order of species in mole fraction and isotope flux output
 fracfluxo = np.array(['xO2', 'xCO2t', 'xCO2s', 'xO3s', 'xJ'])
@@ -655,7 +659,7 @@ isotopest = pd.DataFrame(np.array([51.869, 71.107, 23.212, 40.345, 76.268,
                                   23.212, 40.688, np.nan, np.nan, 26.887,
                                   64.599, 11.887, 22.915, 69.766, 11.887,
                                   21.601, np.nan, np.nan, -.500, 27.054,
-                                  -.370, 1.613, 29.497, -.410, 0.118, np.nan,
+                                  -.370, 1.613, 29.497, -.441, 0.118, np.nan,
                                   np.nan]), index = isotopeso)
 
 # Target mole fraction and isotope flux values from Young 2014
@@ -663,13 +667,17 @@ fracfluxt = pd.DataFrame(np.array([0.212, 2.944e-4, 2.944e-4, 7.184e-6,
                                    8.55e15]), index = fracfluxo)
 
 # Percent difference between target moles and calculated moles
-dmoles = ((moles - molest) / molest) * 100
+def pdiff(m, t):
+    pdiff = ((m - t) / t) * 100
+    return pdiff
+
+dmoles = pdiff(moles, molest)
 
 # Absolute difference between target isotopic values and calculated isotopic values
 disotopes = isotopes - isotopest
 
 # Percent difference between target mole fraction/flux and calculated mole fraction/flux
-dfracflux = ((fracflux - fracfluxt) / fracflux) * 100
+dfracflux = pdiff(fracflux, fracfluxt)
 
 #%% Append difference between target SS and calculated to output sheets
 moles['Percent diff'] = dmoles[0]
