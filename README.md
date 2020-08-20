@@ -1,0 +1,1 @@
+Python implementation of [Young et al. 2014 "On the Δ17O budget of atmospheric O2"](https://www-sciencedirect-com.ezproxy.rice.edu/science/article/pii/S0016703714001914) with additional model runs.
