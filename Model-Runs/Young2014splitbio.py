@@ -286,13 +286,13 @@ def tomol(cm3s):
                          
 # Calculate hydrosphere rate constants (mol/yr) from reaction rates (cm3/s) stated in paper
 #kr9 = alphaCO2H2O * isowater * rQSMOW  # CO2 + H2Q -> COQ + H2O  mol/yr
-kr9t = ft * alphaCO2H2O * isoevap * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr terrestrial
-kr9m = fm * alphaCO2H2O * isophoto * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr marine
+kr9t = ft * 0.8524693696373323 * alphaCO2H2O * isoevap * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr terrestrial
+kr9m = fm * 0.8524693696373323 * alphaCO2H2O * isophoto * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr marine
 kr10t = ft * kr10
 kr10m = fm * kr10
 #kr11 = alphaCO2H2O ** twater * isowater * rXSMOW  # CO2 + H2X -> COX + H2O mol/yr
-kr11t = ft * alphaCO2H2O ** tequil * isoevap ** tevap * rXSMOW
-kr11m = fm * alphaCO2H2O ** tequil * isophoto ** tphoto * rXSMOW
+kr11t = ft * 0.43362182921933173  *alphaCO2H2O ** tequil * isoevap ** tevap * rXSMOW
+kr11m = fm * 0.43362182921933173 * alphaCO2H2O ** tequil * isophoto ** tphoto * rXSMOW
 kr12t = ft * kr12
 kr12m = fm * kr12
 
