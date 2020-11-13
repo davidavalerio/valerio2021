@@ -114,11 +114,15 @@ O2g0 = O2g0 - OQg0 - OXg0
 
 # Fractionation factors from Young 2014
 tresp = 0.5149 # global average respiration theta
-twater = 0.528 # nominal TOI equilibration slope
-isowater = 1.00525 # global average isotopic composition of water after evapotranspiration w/ photosynthesis
-alphari = 1 / 1.0182 # discrimination during respiration
+tequil = 0.528 # nominal TOI equilibration slope
+tevap = 0.519 # evapotranspiration theta from Landais2006
+tphoto = 0.525 # effectic photosynthetic slope
+isoevap = 1.006825 # isotopic enrichment in water from evapotranspiration
+isophoto = 1.0029 # isotopic enrichment in O2 from photosynthesis
+alphar = 1 / 1.0182 # discrimination during respiration
 #alphar = 0.9770279689 # from Young 2014 Fortran code 
-alphar = 1 / isowater * alphari  # respiration fractionation factor
+alphart = 1 / isoevap * alphar  # terrestrial respiration fractionation factor
+alpharm = 1 / isophoto * alphar
 alphaCO2H2O = 1.0413 # from Beck et al. 2005
 
 # Moles of air in atmosphere from Young 2014
@@ -155,6 +159,8 @@ k21m = fm * k21 # photosynthesis rate constant from bio marine yr^-1
 k13 = 6e-07 # oxidation rate constant yr^-1
 k31 = 5e-05 # organic burial rate constant yr^-1
 k23 = 1.75e-05 # organic detritus delivery from biosphere to oceans yr^-1
+k23t = k23 * ft # organic detritus delivery from terrestrial biosphere to oceans yr^-1
+k23m = k23 * fm # organic detritus delivery from marine biosphere to oceans yr^-1
 k41 = 1 # stat-trop mixing rate constant yr^-1
 k14 = 0.1 # trop-strat mixing rate constant yr^-1
 
@@ -252,7 +258,7 @@ def tomol(cm3s):
 #K31 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> OQ + O + O 1/(yr mol)
 #K32 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> O2 + O + X 1/(yr mol)
 #K33 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> OX + O + O 1/(yr mol)
-#K34 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> O2 + O + Q 1/(yr mol)
+#K34 = .5 * K24 * np.Portrait of Leo Tolstoy as a Ploughman on a Fieldsqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> O2 + O + Q 1/(yr mol)
 #K35 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> OQ + O + O 1/(yr mol)
 #K36 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> O2 + O + X 1/(yr mol)
 #K37 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> OX + O + O 1/(yr mol)
@@ -279,10 +285,16 @@ def tomol(cm3s):
                          #rm((mC + mO + mX), mO)) # COX + O1D -> COX + O 1/(yr mol)
                          
 # Calculate hydrosphere rate constants (mol/yr) from reaction rates (cm3/s) stated in paper
-#kr91 = alphaCO2H2O * isowater * rQSMOW  # CO2 + H2Q -> COQ + H2O  mol/yr
-#kr10 = # COQ + H2O -> CO2 + H2Q mol/yr
-#kr111 = alphaCO2H2O ** twater * isowater * rXSMOW  # CO2 + H2X -> COX + H2O mol/yr
-#kr12 = # COX + H2O -> CO2 + H2X mol/yr
+#kr9 = alphaCO2H2O * isowater * rQSMOW  # CO2 + H2Q -> COQ + H2O  mol/yr
+kr9t = ft * alphaCO2H2O * isoevap * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr terrestrial
+kr9m = fm * alphaCO2H2O * isophoto * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr marine
+kr10t = ft * kr10
+kr10m = fm * kr10
+#kr11 = alphaCO2H2O ** twater * isowater * rXSMOW  # CO2 + H2X -> COX + H2O mol/yr
+kr11t = ft * alphaCO2H2O ** tequil * isoevap ** tevap * rXSMOW
+kr11m = fm * alphaCO2H2O ** tequil * isophoto ** tphoto * rXSMOW
+kr12t = ft * kr12
+kr12m = fm * kr12
 
 #%% Solve the system of differential equations
 
@@ -457,72 +469,72 @@ def f(y, t):
     dOQt = kOQtI - OQti * kOQtO
     
     # CO2 Troposphere
-    kCO2tI = (kr10 * COQti + kr12 * COXti + k41 * CO2si)
-    kCO2tO = (kr9 + kr11 + k14)
+    kCO2tI = ((kr10t + kr10m) * COQti + (kr12t + kr12m) * COXti + k41 * CO2si)
+    kCO2tO = (kr9t + kr9m + kr11t + kr11m + k14)
     dCO2t = kCO2tI - CO2ti * kCO2tO
     
     # COX (CO17O) Troposphere
-    kCOXtI = (kr11 * CO2ti + k41 * COXsi) 
-    kCOXtO = (kr12  + k14)
+    kCOXtI = ((kr11t + kr11m) * CO2ti + k41 * COXsi) 
+    kCOXtO = (kr12t + kr12m  + k14)
     dCOXt = kCOXtI - COXti * kCOXtO
     
     # COQ (CO18O) Troposphere
-    kCOQtI = (kr9 * CO2ti  + k41 * COQsi)
-    kCOQtO = (kr10 + k14) 
+    kCOQtI = ((kr9t + kr9m) * CO2ti  + k41 * COQsi)
+    kCOQtO = (kr10t + kr10m + k14) 
     dCOQt = kCOQtI - COQti * kCOQtO
     
     # Biosphere ODEs (equations not used because we assume an infinite reservoir)
     
     # O2 Terrestrial Biosphere
-    # kO2btI = (k12 * O2ti)
-    # kO2btO = (k21 + k23)
-    # dO2bt = kO2bI - O2bi *  kO2bO
+    #kO2btI = (k12 * O2ti)
+    #kO2btO = (k21 + k23)
+    #dO2bt = kO2btI - O2bti *  kO2btO
     dO2bt = 0
     
     # O2 Marine Biosphere
-    # kO2bmI = (k12 * O2ti)
-    # kO2bmO = (k21 + k23)
-    # dO2bm = kO2bI - O2bi *  kO2bO
+    #kO2bmI = (k12 * O2ti)
+    #kO2bmO = (k21 + k23)
+    #dO2bm = kO2bmI - O2bmi *  kO2bmO
     dO2bm = 0
 
     # OX Terrestrial Biosphere
-    # kOXbtI = (k12 * ((alphar ** tresp) * OXti)
-    # kOXbtO = (k21 + k23)
-    # dOXbt = kOXbI - OXbi * kOXbO
+    #kOXbtI = (k12 * (alphar ** tresp) * OXti)
+    #kOXbtO = (k21 + k23)
+    #dOXbt = kOXbtI - OXbti * kOXbtO
     dOXbt = 0
     
     # OX Marine Biosphere
-    # kOXbmI = (k12 * ((alphar ** tresp) * OXti)
-    # kOXbmO = (k21 + k23)
-    # dOXbm = kOXbI - OXbi * kOXbO
+    #kOXbmI = (k12 * (alphar ** tresp) * OXti)
+    #kOXbmO = (k21 + k23)
+    #dOXbm = kOXbmI - OXbmi * kOXbmO
     dOXbm = 0
     
     # OQ Terrestrial Biosphere
-    # kOQbtI = (k12 * alphar * O2ti)
-    # kOQbtO = (k21 + k23)
-    # dOQbt = kOQbI - OQbi * kOQbO
+    #kOQbtI = (k12 * alphar * O2ti)
+    #kOQbtO = (k21 + k23)
+    #dOQbt = kOQbtI - OQbti * kOQbtO
     dOQbt = 0
     
     # OQ Marine Biosphere
-    # kOQbmI = (k12 * alphar * O2ti)
-    # kOQbmO = (k21 + k23)
-    # dOQbm = kOQbI - OQbi * kOQbO
+    #kOQbmI = (k12 * alphar * O2ti)
+    #kOQbmO = (k21 + k23)
+    #dOQbm = kOQbmI - OQbmi * kOQbmO
     dOQbm = 0
     
     # Geosphere ODEs
     
     # O2 Geosphere
-    kO2gI = (k23 * (O2bti + O2bmi) + k13 * O2ti)
+    kO2gI = (k23t * O2bti + k23m * O2bmi + k13 * O2ti)
     kO2gO = k31
     dO2g = kO2gI - O2gi * kO2gO
     
      # OX (O17O) Geosphere
-    kOXgI = (k23 * (OXbti + OXbmi) + k13 * OXti)
+    kOXgI = (k23t * OXbti + k23m * OXbmi + k13 * OXti)
     kOXgO = k31
     dOXg = kOXgI - OXgi * kOXgO
     
     # OQ (O18O) Geosphere
-    kOQgI = (k23 * (OQbti + OQbmi) + k13 * OQti)
+    kOQgI = (k23t * OQbti + k23m * OQbmi + k13 * OQti)
     kOQgO = k31
     dOQg = kOQgI - OQgi * kOQgO
     
@@ -574,7 +586,7 @@ def deltaZ(atomZ, rZ):
 
 # Use delta values to calculate cap17
 def capD(deltaX, deltaQ):
-    capD = deltaX - twater * deltaQ
+    capD = deltaX - tequil * deltaQ
     return capD
 
 # Calculate the 18O/16O and 17O/16O ratios of molecules at end of model run
@@ -755,7 +767,7 @@ fracflux.columns = ['Mole fraction/flux', 'Percent diff']
 x1 = np.linspace(0, 100)
 pureMIF1 = (1 * x1 - 1 * isotopes['Per mil'].loc['d18_O2t'] +
             isotopes['Per mil'].loc['d17_O2t'])
-highT = twater * x1
+highT = tequil * x1
 
 # Setting up figure parameters
 fig1 = plt.figure(figsize = (5, 5))
