@@ -453,7 +453,7 @@ def f(y, t):
     
     # Biosphere ODEs (equations not used because we assume an infinite reservoir)
     
-    # O2 BiosphereWroked on seeing how the anthropogenic increase in CO2 has effected the Dole Effect.
+    # O2 BiosphereW
     # kO2bI = (k12 * O2ti)
     # kO2bO = (k21 + k23)
     # dO2b = kO2bI - O2bi *  kO2bO
@@ -735,14 +735,14 @@ fig1.plot(x1, highT, label = 'slope .528', zorder = 1)
 # Legend and title
 fig1.set_xlabel("$\delta'^{18}$O")
 fig1.set_ylabel("$\delta'^{17}$O")
-fig1.set_title('Young 2014 SS Solution')
+fig1.set_title('Young2014orig SS Solution')
 fig1.legend(loc = 'best', fontsize = 'small')
 
 # Saving plot
-plt.savefig('fig1.png', dpi = 800)
+plt.savefig('Young2014origSS.png', dpi = 800)
 
 #Export data as excel spreadsheet
-writer = pd.ExcelWriter('Young2014SS.xlsx', engine = 'xlsxwriter')
+writer = pd.ExcelWriter('Young2014origSS.xlsx', engine = 'xlsxwriter')
 moles.to_excel(writer, sheet_name = 'Moles')
 isotopes.to_excel(writer, sheet_name = 'Isotopes')
 fracflux.to_excel(writer, sheet_name = 'Mole fraction flux')

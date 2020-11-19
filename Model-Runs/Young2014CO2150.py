@@ -20,7 +20,8 @@ import seaborn as sns
 CO2s0 = 4.8e15 # CO2 strat – initial moles, fixes mixing ratio of CO2
 CO2s0 = (np.linspace(0, 30000) / 270) * CO2s0
 
-solutions = []
+sol = []
+fracfluxsol = []
 
 # GPP multiplier
 GPPx = 1.5
@@ -602,14 +603,12 @@ for CO2s0i in CO2s0:
                             index =fracfluxo)
     
     # Add isotopes and fracflux outputs
-    solutions.append(isotopes)
-    #solutions.append(fracflux)
-
-# Figure 6 from Young 2014
+    sol.append(isotopes)
+    fracfluxsol.append(fracflux)
     
 # D17 as function of [CO2]
 D17_CO2s = []
-for i in solutions:
+for i in sol:
     D17 = i.loc['D17_O2t'].values
     D17_CO2s.append(D17)
     
@@ -620,9 +619,6 @@ fig1 = plt.figure(figsize = (5, 5))
 with sns.axes_style("whitegrid"):
     fig1 = fig1.add_subplot(1, 1, 1)
 fig1.set(xlim = (0, 30000), ylim = (-15, 0))
-fig1.yaxis.set_major_formatter(mtick.StrMethodFormatter("{x:.3f}"))
-fig1.yaxis.set_minor_locator(mtick.AutoMinorLocator(2))
-fig1.xaxis.set_minor_locator(mtick.AutoMinorLocator(2))
 
 # Legend and title
 fig1.set_xlabel("[CO2] (ppm)")
@@ -637,5 +633,27 @@ fig1.legend(loc='best')
 plt.tight_layout()
 plt.savefig('D17tvtCO2s150.jpg', dpi=800)
 
-# Exporting D17 data as .csv
-np.savetxt("D17_CO2s150", D17_CO2s, delimiter=',')
+# Mole fraction O2 as a function of [CO2]
+xO2s = []
+for i in fracfluxsol:
+    xO2 = i.loc['xO2'].values
+    xO2s.append(xO2)
+    
+xO2s = np.hstack(xO2s)
+
+# Setting up figure parameters
+fig2 = plt.figure(figsize = (5, 5))
+with sns.axes_style("whitegrid"):
+    fig2 = fig2.add_subplot(1, 1, 1)
+fig2.set(xlim = (0, 30000), ylim = (0, 1))
+
+# Legend and title
+fig2.set_xlabel("[CO2] (ppm)")
+fig2.set_ylabel("Mole fraction $O_2$")
+fig2.set_title("Mole fraction $O_2$ vs. [CO2] (ppm)")
+
+# Plotting D17 of O2t as function of [CO2]
+fig2.plot(CO2s, xO2s, label = '150% GPP', color = 'green')
+fig2.legend(loc='best')
+plt.tight_layout()
+plt.savefig('xO2vCO2s50.jpg', dpi=800)

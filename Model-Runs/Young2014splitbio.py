@@ -28,8 +28,6 @@ O3s0 = 1 # O3 strat – initial moles, any small value works
 O2t0 = 1 # O2 trop – initial moles, any small value works
 CO2t0 = 4.8e16 # CO2 trop – intial moles (270 ppm), 400ppm = 7.2e16
 O2b0 = 1.83e19 # O2 bio total – from H2O initial moles, not used when H2O is infinite
-O2bt0 = O2b0 * ft # O2 bio terrestrial - based on relative fraction from Field 1998
-O2bm0 = O2b0 * fm # O2 bio marine - based on relative fraction from Field 1998
 O2g0 = 2e17 # O2 geo – moles available for oxidation by O2 trop
 
 # Number of oxygens in each species
@@ -89,11 +87,7 @@ OXt0 = xxX[5] * O2t0 # OX trop - initial moles
 COQt0 = xxQ[6] * CO2t0 # COQ trop - initial moles
 COXt0 = xxX[6] * CO2t0 # COX trop - initial moles
 OQb0 = xxQ[7] * O2b0 # OQ bio - initial moles
-OQbt0 = OQb0 * ft # OQ bio terrestrial - initial moles
-OQbm0 = OQb0 * fm # OQ bio marine - initial moles
 OXb0 = xxX[7] * O2b0 # OX bio - initial moles
-OXbt0 = OXb0 * ft # OX bio terrestrial - initial moles
-OXbm0 = OQb0 * fm # OX bio marine - initial moles
 OQg0 = xxQ[8] * O2g0 # OQ geo - initial moles
 OXg0 = xxX[8] * O2g0 # OX geo - initial moles
 
@@ -106,8 +100,6 @@ O3s0 = O3s0 - OOQs0 - OOXs0
 O2t0 = O2t0 - OQt0 - OXt0
 CO2t0 = CO2t0 - COQt0 - COXt0
 O2b0 = O2b0 - OQb0 - OXb0
-O2bt0 = O2bt0 - OQbt0 - OXbt0
-O2bm0 = O2bm0 - OQbm0 - OXbm0
 O2g0 = O2g0 - OQg0 - OXg0
 
 #%% Constants relevant to calculations
@@ -115,15 +107,20 @@ O2g0 = O2g0 - OQg0 - OXg0
 # Fractionation factors from Young 2014
 tresp = 0.5149 # global average respiration theta
 tequil = 0.528 # nominal TOI equilibration slope
-tevap = 0.519 # evapotranspiration theta from Landais2006
+#tevap = 0.519 # evapotranspiration theta from Landais2006
+tevap = 0.520 # original from Young2014
 tphoto = 0.525 # effectic photosynthetic slope
 isoevap = 1.006825 # isotopic enrichment in water from evapotranspiration
 isophoto = 1.0029 # isotopic enrichment in O2 from photosynthesis
-alphar = 1 / 1.0182 # discrimination during respiration
+isowater = 1.00525 # original from Young 2014
+alphari = 1 / 1.0182 # discrimination during respiration
+alphar = 1 / isowater * alphari
 #alphar = 0.9770279689 # from Young 2014 Fortran code 
-alphart = 1 / isoevap * alphar  # terrestrial respiration fractionation factor
-alpharm = 1 / isophoto * alphar
-alphaCO2H2O = 1.0413 # from Beck et al. 2005
+#alphart = 1 / isoevap * alphar  # terrestrial respiration fractionation factor
+alphart = ft * alphar # original from Young2014
+#alpharm = 1 / isophoto * alphar
+alpharm = fm * alphar # original from Young2014
+alphaCO2H2O = 1.041 # from Beck et al. 2005
 
 # Moles of air in atmosphere from Young 2014
 airs = 1.8e19 # moles of air in the stratosphere
@@ -286,13 +283,17 @@ def tomol(cm3s):
                          
 # Calculate hydrosphere rate constants (mol/yr) from reaction rates (cm3/s) stated in paper
 #kr9 = alphaCO2H2O * isowater * rQSMOW  # CO2 + H2Q -> COQ + H2O  mol/yr
-kr9t = ft * 0.8524693696373323 * alphaCO2H2O * isoevap * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr terrestrial
-kr9m = fm * 0.8524693696373323 * alphaCO2H2O * isophoto * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr marine
+#kr9t = ft * 0.8524693696373323 * alphaCO2H2O * isoevap * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr terrestrial
+#kr9m = fm * 0.8524693696373323 * alphaCO2H2O * isophoto * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr marine
+kr9t = ft * kr9
+kr9m = fm * kr9
 kr10t = ft * kr10
 kr10m = fm * kr10
 #kr11 = alphaCO2H2O ** twater * isowater * rXSMOW  # CO2 + H2X -> COX + H2O mol/yr
-kr11t = ft * 0.43362182921933173  *alphaCO2H2O ** tequil * isoevap ** tevap * rXSMOW
-kr11m = fm * 0.43362182921933173 * alphaCO2H2O ** tequil * isophoto ** tphoto * rXSMOW
+#kr11t = ft * 0.43362182921933173  *alphaCO2H2O ** tequil * isoevap ** tevap * rXSMOW
+#kr11m = fm * 0.43362182921933173 * alphaCO2H2O ** tequil * isophoto ** tphoto * rXSMOW
+kr11t = ft * kr11
+kr11m = fm * kr11
 kr12t = ft * kr12
 kr12m = fm * kr12
 
@@ -321,15 +322,12 @@ def f(y, t):
     CO2ti = y[18]
     COQti = y[19]
     COXti = y[20]
-    O2bti = y[21]
-    O2bmi = y[22]
-    OQbti = y[23]
-    OQbmi = y[24]
-    OXbti = y[25]
-    OXbmi = y[26]
-    O2gi = y[27]
-    OQgi = y[28]
-    OXgi = y[29]
+    O2bi = y[21]
+    OQbi = y[22]
+    OXbi = y[23]
+    O2gi = y[24]
+    OQgi = y[25]
+    OXgi = y[26]
     
     # k(species)I represents input flux, k(species)O represents output flux
     
@@ -454,99 +452,81 @@ def f(y, t):
     # Troposphere ODEs
     
     # O2 Troposphere
-    kO2tI = (k41 * O2si + k21t * O2bti + k21m * O2bmi + k31 * O2gi)
-    kO2tO = (k12t + k12m + k13 + k14)
+    kO2tI = (k41 * O2si + (k21t + k21m) * O2bi + k31 * O2gi)
+    kO2tO = ((k12t + k12m) + k13 + k14)
     dO2t = kO2tI - O2ti * kO2tO
     
     # OX (O17O) Troposphere
-    kOXtI = (k41 * OXsi + k21t * OXbti + k21m * OXbmi + k31 * OXgi)
+    kOXtI = (k41 * OXsi + (k21t + k21m) * OXbi + k31 * OXgi)
     kOXtO = (k12t * (alphar ** tresp) + k12m * (alphar ** tresp) + k13 + k14)
     dOXt = kOXtI - OXti * kOXtO
     
     # OQ (O18O) Troposphere
-    kOQtI = (k41 * OQsi + k21t * OQbti + k21m * OQbmi + k31 * OQgi)
+    kOQtI = (k41 * OQsi + (k21t + k21m) * OQbi + k31 * OQgi)
     kOQtO = (k12t * alphar + k12m * alphar + k13 + k14)
     dOQt = kOQtI - OQti * kOQtO
     
     # CO2 Troposphere
     kCO2tI = ((kr10t + kr10m) * COQti + (kr12t + kr12m) * COXti + k41 * CO2si)
-    kCO2tO = (kr9t + kr9m + kr11t + kr11m + k14)
+    kCO2tO = ((kr9t + kr9m) + (kr11t + kr11m) + k14)
     dCO2t = kCO2tI - CO2ti * kCO2tO
     
     # COX (CO17O) Troposphere
     kCOXtI = ((kr11t + kr11m) * CO2ti + k41 * COXsi) 
-    kCOXtO = (kr12t + kr12m  + k14)
+    kCOXtO = ((kr12t + kr12m) + k14)
     dCOXt = kCOXtI - COXti * kCOXtO
     
     # COQ (CO18O) Troposphere
     kCOQtI = ((kr9t + kr9m) * CO2ti  + k41 * COQsi)
-    kCOQtO = (kr10t + kr10m + k14) 
+    kCOQtO = ((kr10t + kr10m) + k14) 
     dCOQt = kCOQtI - COQti * kCOQtO
     
     # Biosphere ODEs (equations not used because we assume an infinite reservoir)
     
-    # O2 Terrestrial Biosphere
-    #kO2btI = (k12 * O2ti)
-    #kO2btO = (k21 + k23)
-    #dO2bt = kO2btI - O2bti *  kO2btO
-    dO2bt = 0
+   # O2 Biosphere
+    # kO2bI = (k12 * O2ti)
+    # kO2bO = (k21 + k23)
+    # dO2b = kO2bI - O2bi *  kO2bO
+    dO2b = 0
     
-    # O2 Marine Biosphere
-    #kO2bmI = (k12 * O2ti)
-    #kO2bmO = (k21 + k23)
-    #dO2bm = kO2bmI - O2bmi *  kO2bmO
-    dO2bm = 0
-
-    # OX Terrestrial Biosphere
-    #kOXbtI = (k12 * (alphar ** tresp) * OXti)
-    #kOXbtO = (k21 + k23)
-    #dOXbt = kOXbtI - OXbti * kOXbtO
-    dOXbt = 0
+    # OX (17OO) Biosphere
+    # kOXbI = (k12 * ((alphar ** tresp) * OXti)
+    # kOXbO = (k21 + k23)
+    # dOXb = kOXbI - OXbi * kOXbO
+    dOXb = 0
     
-    # OX Marine Biosphere
-    #kOXbmI = (k12 * (alphar ** tresp) * OXti)
-    #kOXbmO = (k21 + k23)
-    #dOXbm = kOXbmI - OXbmi * kOXbmO
-    dOXbm = 0
-    
-    # OQ Terrestrial Biosphere
-    #kOQbtI = (k12 * alphar * O2ti)
-    #kOQbtO = (k21 + k23)
-    #dOQbt = kOQbtI - OQbti * kOQbtO
-    dOQbt = 0
-    
-    # OQ Marine Biosphere
-    #kOQbmI = (k12 * alphar * O2ti)
-    #kOQbmO = (k21 + k23)
-    #dOQbm = kOQbmI - OQbmi * kOQbmO
-    dOQbm = 0
+    # OQ (18OO) Biosphere
+    # kOQbI = (k12 * alphar * O2ti)
+    # kOQbO = (k21 + k23)
+    # dOQb = kOQbI - OQbi * kOQbO
+    dOQb = 0
     
     # Geosphere ODEs
     
     # O2 Geosphere
-    kO2gI = (k23t * O2bti + k23m * O2bmi + k13 * O2ti)
+    kO2gI = (k23t * O2bi + k23m * O2bi + k13 * O2ti)
     kO2gO = k31
     dO2g = kO2gI - O2gi * kO2gO
     
      # OX (O17O) Geosphere
-    kOXgI = (k23t * OXbti + k23m * OXbmi + k13 * OXti)
+    kOXgI = (k23t * OXbi + k23m * OXbi + k13 * OXti)
     kOXgO = k31
     dOXg = kOXgI - OXgi * kOXgO
     
     # OQ (O18O) Geosphere
-    kOQgI = (k23t * OQbti + k23m * OQbmi + k13 * OQti)
+    kOQgI = (k23t * OQbi + k23m * OQbi + k13 * OQti)
     kOQgO = k31
     dOQg = kOQgI - OQgi * kOQgO
     
     return np.array([dOs, dXs, dO1Ds, dQs, dX1Ds, dQ1Ds, dO2s, dOXs, dOQs,
                      dCO2s, dCOXs, dCOQs, dO3s, dOOXs, dOOQs, dO2t, dOQt,
-                     dOXt, dCO2t, dCOQt, dCOXt, dO2bt, dO2bm, dOQbt, dOQbm,
-                     dOXbt, dOXbm, dO2g, dOQg, dOXg])
+                     dOXt, dCO2t, dCOQt, dCOXt,dO2b, dOQb, dOXb, dO2g, dOQg,
+                     dOXg])
 
 # Initial conditions for solver
 y0 = np.array([Os0, Xs0, O1Ds0, Qs0, X1Ds0, Q1Ds0, O2s0, OXs0, OQs0, CO2s0,
                COXs0, COQs0, O3s0, OOXs0, OOQs0, O2t0, OQt0, OXt0, CO2t0,
-               COQt0, COXt0, O2bt0, O2bm0, OQbt0, OQbm0, OXbt0, OXbm0, O2g0,
+               COQt0, COXt0, O2b0, OQb0, OXb0, O2g0,
                OQg0, OXg0])
 
 
@@ -556,8 +536,8 @@ t = np.arange(0, 10e5, 0.1)
 # Order of species in molar output
 moleso = np.array(['Os', 'Xs', 'O1Ds', 'Qs', 'X1Ds', 'Q1Ds', 'O2s', 'OXs',
                    'OQs', 'CO2s', 'COXs', 'COQs', 'O3s', 'OOXs', 'OOQs',
-                   'O2t', 'OQt', 'OXt', 'CO2t', 'COQt', 'COXt', 'O2bt', 'O2bm',
-                   'OQbt', 'OQbm', 'OXbt', 'OXbm', 'O2g', 'OQg', 'OXg'])
+                   'O2t', 'OQt', 'OXt', 'CO2t', 'COQt', 'COXt', 'O2b',
+                   'OQb', 'OXb', 'O2g', 'OQg', 'OXg'])
 
 
 
@@ -604,10 +584,8 @@ R18_O2t = atomZ(isok2[5], moles.loc['OQt'], moles.loc['O2t'])
 R17_O2t = atomZ(isok2[5], moles.loc['OXt'], moles.loc['O2t'])
 R18_CO2t = atomZ(isok2[6], moles.loc['COQt'], moles.loc['CO2t'])
 R17_CO2t = atomZ(isok2[6], moles.loc['COXt'], moles.loc['CO2t'])
-R18_O2bt = atomZ(isok2[7], moles.loc['OQbt'], moles.loc['O2bt'])
-R18_O2bm = atomZ(isok2[7], moles.loc['OQbm'], moles.loc['O2bm'])
-R17_O2bt = atomZ(isok2[7], moles.loc['OXbt'], moles.loc['O2bt'])
-R17_O2bm = atomZ(isok2[7], moles.loc['OXbm'], moles.loc['O2bt'])
+R18_O2b = atomZ(isok2[7], moles.loc['OQb'], moles.loc['O2b'])
+R17_O2b = atomZ(isok2[7], moles.loc['OXb'], moles.loc['O2b'])
 R18_O2g = atomZ(isok2[8], moles.loc['OQg'], moles.loc['O2g'])
 R17_O2g = atomZ(isok2[8], moles.loc['OXg'], moles.loc['O2g'])
 
@@ -626,10 +604,8 @@ d18_O2t = deltaZ(R18_O2t, rQ)
 d17_O2t = deltaZ(R17_O2t, rX)
 d18_CO2t = deltaZ(R18_CO2t, rQ)
 d17_CO2t = deltaZ(R17_CO2t, rX)
-d18_O2bt = deltaZ(R18_O2bt, rQ)
-d18_O2bm = deltaZ(R18_O2bm, rQ)
-d17_O2bt = deltaZ(R17_O2bt, rX)
-d17_O2bm = deltaZ(R17_O2bm, rX)
+d18_O2b = deltaZ(R18_O2b, rQ)
+d17_O2b = deltaZ(R17_O2b, rX)
 d18_O2g = deltaZ(R18_O2g, rQ)
 d17_O2g = deltaZ(R17_O2g, rX)
 
@@ -641,17 +617,16 @@ D17_CO2s = capD(d17_CO2s, d18_CO2s)
 D17_O3s = capD(d17_O3s, d18_O3s)
 D17_O2t = capD(d17_O2t, d18_O2t)
 D17_CO2t = capD(d17_CO2t, d18_CO2t)
-D17_O2bt = capD(d17_O2bt, d18_O2bt)
-D17_O2bm = capD(d17_O2bm, d18_O2bm)
+D17_O2b = capD(d17_O2b, d18_O2b)
 D17_O2g = capD(d17_O2g, d18_O2g)
 
 # Order of species in isotope output dataframe
 isotopeso = np.array(['d18_Os', 'd18_O1Ds', 'd18_O2s', 'd18_CO2s', 'd18_O3s',
-                      'd18_O2t', 'd18_CO2t', 'd18_O2bt', 'd18_O2bm', 'd18_O2g',
-                      'd17_Os', 'd17_O1Ds', 'd17_O2s', 'd17_CO2s', 'd17_O3s',
-                      'd17_O2t', 'd17_CO2t', 'd17_O2bt', 'd17_O2bm', 'd17_O2g',
-                      'D17_Os', 'D17_O1Ds', 'D17_O2s', 'D17_CO2s', 'D17_O3s',
-                      'D17_O2t', 'D17_CO2t', 'D17_O2bt', 'D17_O2bm', 'D17_O2g'])
+                      'd18_O2t', 'd18_CO2t', 'd18_O2b', 'd18_O2g', 'd17_Os',
+                      'd17_O1Ds', 'd17_O2s', 'd17_CO2s', 'd17_O3s', 'd17_O2t',
+                      'd17_CO2t', 'd17_O2b', 'd17_O2g', 'D17_Os', 'D17_O1Ds',
+                      'D17_O2s', 'D17_CO2s', 'D17_O3s', 'D17_O2t', 'D17_CO2t',
+                      'D17_O2b', 'D17_O2g'])
 
 #%% Mole fraction and flux outputs
 
@@ -696,18 +671,17 @@ fracfluxo = np.array(['xO2', 'xCO2t', 'xCO2s', 'xO3s', 'xJ'])
 #%% Output dataframes to spreadsheet
 
 # Create empty dataframes for isotope and fraction/flux outputs
-isotopes = pd.DataFrame(np.full((1, 30), 0, dtype=float), columns = isotopeso)
+isotopes = pd.DataFrame(np.full((1, 27), 0, dtype=float), columns = isotopeso)
 fracflux = pd.DataFrame(np.full((1, 5), 0, dtype=float), columns = fracfluxo)
 
 # Assign calculated isotope values to dataframe
 isotopes = pd.DataFrame(np.array([d18_Os, d18_O1Ds, d18_O2s, d18_CO2s,
-                                  d18_O3s, d18_O2t, d18_CO2t, d18_O2bt,
-                                  d17_O2bm, d18_O2g, d17_Os, d17_O1Ds,
-                                  d17_O2s, d17_CO2s, d17_O3s, d17_O2t,
-                                  d17_CO2t, d17_O2bt, d17_O2bm, d17_O2g,
-                                  D17_Os, D17_O1Ds, D17_O2s, D17_CO2s,
-                                  D17_O3s, D17_O2t, D17_CO2t, D17_O2bt,
-                                  D17_O2bm, D17_O2g]),
+                                  d18_O3s, d18_O2t, d18_CO2t, d18_O2b,
+                                  d18_O2g, d17_Os, d17_O1Ds, d17_O2s,
+                                  d17_CO2s, d17_O3s, d17_O2t, d17_CO2t,
+                                  d17_O2b, d17_O2g, D17_Os, D17_O1Ds,
+                                  D17_O2s, D17_CO2s, D17_O3s, D17_O2t,
+                                  D17_CO2t, D17_O2b, D17_O2g]),
                         index = isotopeso)
 
 # Assign calculated mole fraction and flux values to dataframe
@@ -722,16 +696,16 @@ molest = pd.DataFrame(np.array([1.22e9, 465171, 3835.85, 2629860, 1.51757,
                                 1.82e12, 1e13, 1.29e14, 1.53e11, 8.52e11,
                                 3.8e19, 1.59e17, 2.85e16, 4.79e16, 1e14,
                                 1.81e13, np.nan, np.nan, np.nan, np.nan,
-                                np.nan, np.nan, np.nan, np.nan, np.nan]),
+                                np.nan, np.nan]),
                       index = moleso)
                 
 # Target isotopic values from Young 2014
 isotopest = pd.DataFrame(np.array([51.941, 71.167, 23.298, 39.802, 76.349,
-                                  23.298, 40.1118, np.nan, np.nan, np.nan,
+                                  23.298, 40.1118, np.nan, np.nan,
                                   26.8616, 64.5622, 11.8758, 22.8326, 69.7506,
-                                  11.8767, 21.5126, np.nan, np.nan, np.nan,
+                                  11.8767, 21.5126, np.nan,np.nan,
                                   -.56313, 26.9861, -.42564, 1.81727, 29.4383,
-                                  -.42469, 0.33356, np.nan, np.nan, np.nan]),
+                                  -.42469, 0.33356, np.nan, np.nan]),
                          index = isotopeso)
 
 # Target mole fraction and isotope flux values from Young 2014
@@ -794,11 +768,11 @@ fig1.plot(x1, highT, label = 'slope .528', zorder = 1)
 # Legend and title
 fig1.set_xlabel("$\delta'^{18}$O")
 fig1.set_ylabel("$\delta'^{17}$O")
-fig1.set_title('Young 2014 SS Solution')
+fig1.set_title('Young2014splitbio SS Solution')
 fig1.legend(loc = 'best', fontsize = 'small')
 
 # Saving plot
-plt.savefig('fig1.png', dpi = 800)
+plt.savefig('Young2014splitbioSS.png', dpi = 800)
 
 #Export data as excel spreadsheet
 writer = pd.ExcelWriter('Young2014splitbioSS.xlsx', engine = 'xlsxwriter')
