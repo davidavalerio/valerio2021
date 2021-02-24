@@ -12,40 +12,34 @@ import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy import stats
 
 # Lists for outputs of for loop
 sol = []
 fracfluxsol = []
 
-# Fraction of global primary productivity for ocean vs. land from Field 1998
-ftx = np.linspace(0, 1, 10)
+# GPP multiplier
+GPPx = np.array([0.5, 1, 1.5])
 
-# Range of respiration thetas for terrestrial and marine biosphere
-tresp = np.array([.506, .512, .514, .5149, .516, .520])
+# Initial moles of all isotopologues in relavent species
+CO2s0 = 4.8e15 # CO2 strat – initial moles, fixes mixing ratio of CO2
+CO2sx = (np.linspace(0, 30000) / 270) * CO2s0
 
-# For loop for different tresp values
-for trespi in tresp:
+# For loop for different GPP values
+for GPP in GPPx:
     
-    for ft in ftx:
-        
-        # Initial moles of combined isotopologues for relevant species
+    # For loop for different [CO2]
+    for CO2s0i in CO2sx:
         Os0 = 1 # O strat – initial moles, any small value works
         O1Ds0 = 1 # O(1D) strat – initial moles, any small value works
         O2s0 = 1 # O2 strat – initial moles, any small value works
-        CO2s0 = 4.8e15 # CO2 strat – initial moles, fixes mixing ratio of CO2
         O3s0 = 1 # O3 strat – initial moles, any small value works
         O2t0 = 1 # O2 trop – initial moles, any small value works
-        CO2t0 = 4.8e16 # CO2 trop – intial moles (270 ppm), 400ppm = 7.2e16
-        O2b0 = 1.83e19 # O2 bio total – from H2O initial moles, not used when H2O is infinite
+        CO2s0 = CO2s0i
+        CO2t0 = CO2s0 * 10 # CO2 trop – initial moles (270 ppm), 400ppm = 7.2e16
+        O2b0 = 1.83e19 # O2 bio – from H2O initial moles, not used when H2O is infinite
         O2g0 = 2e17 # O2 geo – moles available for oxidation by O2 trop
         
-        # Number of oxygens in each species
-        isok1 = pd.Series(np.array([2, 1, 2, 1, 2, 2, 1, 2, 2]), 
-                          index = np.array(['Os', 'O1Ds', 'O2s', 'CO2s', 'O3s', 'O2t',
-                                            'CO2t','O2b', 'O2g']))
-        
-        # Multiplier for converting atomic ratios to isotopologue ratios for each species
+        # Number of potentially rare oxygen isotopes in each species
         isok2 = pd.Series(np.array([1, 1, 2, 1, 3, 2, 1, 2, 2]), 
                           index = np.array(['Os', 'O1Ds', 'O2s', 'CO2s', 'O3s', 'O2t',
                                             'CO2t','O2b', 'O2g']))
@@ -59,8 +53,6 @@ for trespi in tresp:
         rQSMOW = 0.0020052
         rXSMOW = 0.0003799
         
-        #18O/16O (rQ) and 17O/16O (rX) of leaf water relative to VSMOW
-        
         # Fractional abundance of 18O and 17O from isotope ratios
         def frac(R1, R2):
             rZ = R1 / (1 + R1 + R2)
@@ -72,7 +64,6 @@ for trespi in tresp:
         
         # Calculate 18O/16O and 17O/16O ratios for each species
         # Z is either 18O (Q) or 17O (X)
-        
         def xxZ(isok2, rZ):
             xxZ = (isok2 * rZ) / (isok2 * rQ + isok2 * rX + 1)
             return xxZ
@@ -115,24 +106,14 @@ for trespi in tresp:
         #%% Constants relevant to calculations
         
         # Fractionation factors from Young 2014
-        #trespi = 0.5149 # global average respiration theta
-        tequil = 0.528 # nominal TOI equilibration slope
-        tevap0 = 0.520 # original from Young2014
-        isowater = 1.00525 # original from Young 2014
+        tresp = 0.5149 # global average respiration theta
+        tCO2H2O = 0.528 # nominal TOI equilibration slope
+        tevap = 0.520 # evapotranspiration theta
+        isowater = 1.00525 # isotopic composition of water after evapotranspiration
         alphari = 1 / 1.0182 # discrimination during respiration
-        #alphar = 1 / isowater * alphari # Calculated base fractionation
         #alphar = 0.9770279689 # from Young 2014 Fortran code 
-        #alphart = ft * alphar # original from Young2014
-        #alpharm = (1 - ft) * alphar # original from Young2014
+        alphar = 1 / isowater * alphari  # respiration fractionation factor
         alphaCO2H2O = 1.0413 # from Beck et al. 2005
-        
-        # Updated fractionation factors
-        tevap = 0.519 # evapotranspiration theta from Landais2006
-        tphoto = 0.525 # effectic photosynthetic slope
-        isoevap = 1.006825 # isotopic enrichment in water from evapotranspiration
-        isophoto = 1.0029 # isotopic enrichment in O2 from photosynthesis 
-        alphart = 1 / isoevap * alphari  # terrestrial respiration fractionation factor
-        alpharm = 1 / isophoto * alphari # marine respiration fractionation factor
         
         # Moles of air in atmosphere from Young 2014
         airs = 1.8e19 # moles of air in the stratosphere
@@ -142,22 +123,26 @@ for trespi in tresp:
         vs = 2.8e25 # volume of stratosphere
         vt = vs / 10 # volume of troposphere is 1/10 that of the stratosphere
         
+        # Constants for calculating reaction rates
+        secyear = 31556952 # number of seconds in a year
+        avo = 6.0221409e23 # Avogadro's number
+        
+        # Molar masses of oxygen isotopes and carbon from PubChem
+        mO = 15.994915 # molar mass of oxygen
+        mX = 16.999131 # molar mass of oxygen-17
+        mQ = 17.99916  # molar mass of oxygen-18
+        mC = 12 # molar mass of carbon
+        
         #%% Assign reaction rates  from initial spreadsheet
         
         # Rate constants for transport between boxes
         # 1 - troposphere, 2 - biosphere/hydrosphere, 3 - geosphere, 4 - stratosphere
         # k12 means 1 (trop) -> 2 (bio/hydro) and similarly for others
-        k12 = 0.0008 # respiration rate constant yr^-1
-        k12t = ft * k12 # respiration rate constant from bio terrestrial yr^-1
-        k12m = (1 - ft) * k12 # respiration rate constant from bio marine yr^-1
-        k21 = 0.00165 # photosynthesis rate constant yr^-1
-        k21t = ft * k21 # photosynthesis rate constant from bio terrestrial yr^-1
-        k21m = (1 - ft) * k21 # photosynthesis rate constant from bio marine yr^-1
+        k12 = 0.0008 * GPP # respiration rate constant yr^-1
+        k21 = 0.00165 * GPP # photosynthesis rate constant yr^-1
         k13 = 6e-07 # oxidation rate constant yr^-1
         k31 = 5e-05 # organic burial rate constant yr^-1
         k23 = 1.75e-05 # organic detritus delivery from biosphere to oceans yr^-1
-        k23t = ft * k23 # organic detritus delivery from terrestrial biosphere to oceans yr^-1
-        k23m = (1 - ft) * k23 # organic detritus delivery from marine biosphere to oceans yr^-1
         k41 = 1 # stat-trop mixing rate constant yr^-1
         k14 = 0.1 # trop-strat mixing rate constant yr^-1
         
@@ -225,24 +210,11 @@ for trespi in tresp:
         kr11 = 0.00016875677 # CO2 + H2X -> COX + H2O mol/yr
         kr12 = 0.44544841 # COX + H2O -> CO2 + H2X mol/yr
         
-        # Hydrosphere multipliers from original model
-        kr91 = kr9 / (alphaCO2H2O * isowater * rQSMOW)
-        kr111 = kr11 / (alphaCO2H2O ** tequil * isowater ** tevap0 * rXSMOW)
-                     
-        # Splitbio hydrosphere rate constants from base model
-        kr10t = ft * kr10
-        kr10m = (1 - ft) * kr10
-        kr12t = ft * kr12
-        kr12m = (1 - ft) * kr12
+        # Fake hydrosphere rate constants
+        kr911 = kr9 / (alphaCO2H2O * isowater * tevap * rQSMOW)
+        kr111 = kr11 / (alphaCO2H2O ** tCO2H2O * isowater ** tevap * rXSMOW)
         
-        # Splitbio hydrosphere rate constants from updated model
-        kr9t = ft * kr91 * alphaCO2H2O * isoevap * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr terrestrial
-        kr9m = (1 - ft) * kr91 * alphaCO2H2O * isophoto * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr marine
-        kr11t = ft * kr111  * alphaCO2H2O ** tequil * isoevap ** tevap * rXSMOW
-        kr11m = (1 - ft) * kr111 * alphaCO2H2O ** tequil * isophoto ** tphoto * rXSMOW
-    
         #%% Solve the system of differential equations
-        
         # Function containing all the ODEs
         def f(y, t):
             Osi = y[0]
@@ -258,7 +230,7 @@ for trespi in tresp:
             COXsi = y[10]
             COQsi = y[11]
             O3si = y[12]
-            OOXsi = y[13]
+            OOXsi = y[13]   
             OOQsi = y[14]
             O2ti = y[15]
             OQti = y[16]
@@ -272,9 +244,9 @@ for trespi in tresp:
             O2gi = y[24]
             OQgi = y[25]
             OXgi = y[26]
-            
+                
             # k(species)I represents input flux, k(species)O represents output flux
-            
+                
             # Stratosphere ODEs
             
             # O Stratosphere
@@ -290,21 +262,21 @@ for trespi in tresp:
             kOsO = (K4 * O2si + K7 * OQsi + K8 * OXsi + K19 * O3si + K20 * OOQsi +
                     K21 * OOXsi + K44 * OQsi + K46 * OXsi)
             dOs = kOsI - Osi * kOsO
-            
+        
             # X (17O) Stratosphere 
             kXsI = (K3 * OXsi + K12 * OOXsi + K32 * OOXsi * O1Dsi +
                     K36 * O3si * X1Dsi + K41 * O2si * X1Dsi + K46 * OXsi * Osi +
                     K52 * CO2si * X1Dsi + K54 * COXsi * O1Dsi)
             kXsO = (K6 * O2si + K23 * O3si + K45 * O2si)
             dXs = kXsI - Xsi * kXsO
-            
+                
             # Q (18O) Stratosphere
             kQsI = (K2 * OQsi + K10 * OOQsi + K30 * OOQsi * O1Dsi +
                     K34 *  O3si * Q1Dsi + K39 * O2si * Q1Dsi + K44 * OQsi * Osi +
                     K48 * CO2si * Q1Dsi + K50 * COQsi * O1Dsi)
             kQsO = (K5 * O2si + K22 * O3si + K43 * O2si)
             dQs = kQsI - Qsi * kQsO
-            
+                
             # O(1D) Stratosphere
             kO1DsI = (K14 * O3si + K16 * OOQsi + K18 * OOXsi)
             kO1DsO = (K24 * O3si + K25 * OOQsi + K26 * OOXsi + K29 * O3si +
@@ -312,7 +284,7 @@ for trespi in tresp:
                       K38 * O2si + K47 * CO2si + K50 * COQsi + K51 * COQsi +
                       K54 * COXsi + K55 * COXsi)
             dO1Ds = kO1DsI - O1Dsi * kO1DsO    
-            
+                
             # X(1D) (17O(1D)) Stratosphere
             kX1DsI = (K17 * OOXsi)
             kX1DsO = (K28 * O3si + K36 * O3si + K37 * O3si + K41 * O2si +
@@ -324,7 +296,7 @@ for trespi in tresp:
             kQ1DsO = (K27 * O3si + K34 * O3si + K35 * O3si + K39 * O2si +
                       K40 * O2si + K48 * CO2si + K49 * CO2si)
             dQ1Ds = kQ1DsI - Q1Dsi * kQ1DsO
-            
+                
             # O2 Stratosphere
             kO2sI = (K9 * O3si + K10 * OOQsi + K12 * OOXsi + K14 * O3si +
                      K15 * OOQsi + K17 * OOXsi + 2 * K19 * O3si * Osi +
@@ -356,19 +328,19 @@ for trespi in tresp:
                      K43 * O2si * Qsi + k14 * OQti)
             kOQsO = (K2 + K7 * Osi + K44 * Osi + k41)
             dOQs = kOQsI - OQsi * kOQsO
-            
+                
             # CO2 Stratosphere
             kCO2sI = (K47 * CO2si * O1Dsi + K48 * CO2si * Q1Dsi + K50 * COQsi * O1Dsi +
                       K52 * CO2si * X1Dsi + K54 * COXsi * O1Dsi + k14 * CO2ti)
             kCO2sO = (K47 * O1Dsi + K48 * Q1Dsi + K49 * Q1Dsi + K52 * X1Dsi +
                       K53 * X1Dsi + k41)
             dCO2s = kCO2sI - CO2si * kCO2sO
-            
+                
             # COX (CO17O) Stratosphere
             kCOXsI = (K53 * CO2si * X1Dsi + K55 * COXsi * O1Dsi + k14 * COXti)
             kCOXsO = (K54 * O1Dsi + K55 * O1Dsi + k41)
             dCOXs = kCOXsI - COXsi * kCOXsO
-            
+                
             # COQ (CO18O) Stratosphere
             kCOQsI = (K49 * CO2si * Q1Dsi + K51 * COQsi * O1Dsi + k14 * COQti)
             kCOQsO = (K50 * O1Dsi + K51 * O1Dsi + k41)
@@ -380,13 +352,13 @@ for trespi in tresp:
                      K24 * O1Dsi + K27 * Q1Dsi + K28 * X1Dsi + K29 * O1Dsi +
                      K34 * Q1Dsi + K35 * Q1Dsi + K36 * X1Dsi + K37 * X1Dsi)
             dO3s = kO3sI - O3si * kO3sO
-            
+                
             # OOX (OO17O) Stratosphere
             kOOXsI = (K6 * O2si * Xsi + K8 * OXsi * Osi)
             kOOXsO = (K12 + K13 + K17 + K18 + K21 * Osi + K26 * O1Dsi +
                       K32 * O1Dsi + K33 * O1Dsi)
             dOOXs = kOOXsI - OOXsi * kOOXsO
-            
+        
             # OOQ (OO18O) Stratosphere
             kOOQsI = (K5 * O2si * Qsi + K7 * OQsi * Osi)
             kOOQsO = (K10 + K11 + K15 + K16 + K20 * Osi + K25 * O1Dsi +
@@ -394,100 +366,96 @@ for trespi in tresp:
             dOOQs = kOOQsI - OOQsi * kOOQsO
             
             # Troposphere ODEs
-            
+                
             # O2 Troposphere
-            kO2tI = (k41 * O2si + (k21t + k21m) * O2bi + k31 * O2gi)
-            kO2tO = ((k12t + k12m) + k13 + k14)
+            kO2tI = (k41 * O2si + k21 * O2bi + k31 * O2gi)
+            kO2tO = (k12 + k13 + k14)
             dO2t = kO2tI - O2ti * kO2tO
-            
+                
             # OX (O17O) Troposphere
-            kOXtI = (k41 * OXsi + (k21t + k21m) * OXbi + k31 * OXgi)
-            kOXtO = (k12t * (alphart ** trespi) + k12m * (alpharm ** trespi) + k13 + k14)
+            kOXtI = (k41 * OXsi + k21 * OXbi + k31 * OXgi)
+            kOXtO = (k12 * (alphar ** tresp) + k13 + k14)
             dOXt = kOXtI - OXti * kOXtO
-            
+                
             # OQ (O18O) Troposphere
-            kOQtI = (k41 * OQsi + (k21t + k21m) * OQbi + k31 * OQgi)
-            kOQtO = (k12t * alphart + k12m * alpharm + k13 + k14)
+            kOQtI = (k41 * OQsi + k21 * OQbi + k31 * OQgi)
+            kOQtO = (k12 * alphar + k13 + k14)
             dOQt = kOQtI - OQti * kOQtO
             
             # CO2 Troposphere
-            kCO2tI = ((kr10t + kr10m) * COQti + (kr12t + kr12m) * COXti + k41 * CO2si)
-            kCO2tO = ((kr9t + kr9m) + (kr11t + kr11m) + k14)
+            kCO2tI = (kr10 * COQti + kr12 * COXti + k41 * CO2si)
+            kCO2tO = (kr9 + (0.43362182921933173 * alphaCO2H2O ** tCO2H2O * isowater ** tevap * rXSMOW) + k14)
             dCO2t = kCO2tI - CO2ti * kCO2tO
             
             # COX (CO17O) Troposphere
-            kCOXtI = ((kr11t + kr11m) * CO2ti + k41 * COXsi) 
-            kCOXtO = ((kr12t + kr12m) + k14)
+            kCOXtI = ((0.43362182921933173 * alphaCO2H2O ** tCO2H2O * isowater ** tevap * rXSMOW) * CO2ti + k41 * COXsi) 
+            kCOXtO = (kr12  + k14)
             dCOXt = kCOXtI - COXti * kCOXtO
-            
+                
             # COQ (CO18O) Troposphere
-            kCOQtI = ((kr9t + kr9m) * CO2ti  + k41 * COQsi)
-            kCOQtO = ((kr10t + kr10m) + k14) 
+            kCOQtI = (kr9 * CO2ti  + k41 * COQsi)
+            kCOQtO = (kr10 + k14) 
             dCOQt = kCOQtI - COQti * kCOQtO
-            
+                
             # Biosphere ODEs (equations not used because we assume an infinite reservoir)
-            
-           # O2 Biosphere
+                
+            # O2 Biosphere
             # kO2bI = (k12 * O2ti)
             # kO2bO = (k21 + k23)
             # dO2b = kO2bI - O2bi *  kO2bO
             dO2b = 0
-            
+                
             # OX (17OO) Biosphere
-            # kOXbI = (k12 * ((alphar ** trespi) * OXti)
+            # kOXbI = (k12 * ((alphar ** tresp) * OXti)
             # kOXbO = (k21 + k23)
             # dOXb = kOXbI - OXbi * kOXbO
             dOXb = 0
-            
+                
             # OQ (18OO) Biosphere
             # kOQbI = (k12 * alphar * O2ti)
             # kOQbO = (k21 + k23)
             # dOQb = kOQbI - OQbi * kOQbO
             dOQb = 0
-            
+                
             # Geosphere ODEs
             
             # O2 Geosphere
-            kO2gI = (k23t * O2bi + k23m * O2bi + k13 * O2ti)
+            kO2gI = (k23 * O2bi + k13 * O2ti)
             kO2gO = k31
             dO2g = kO2gI - O2gi * kO2gO
-            
-             # OX (O17O) Geosphere
-            kOXgI = (k23t * OXbi + k23m * OXbi + k13 * OXti)
+                
+            # OX (O17O) Geosphere
+            kOXgI = (k23 * OXbi + k13 * OXti)
             kOXgO = k31
             dOXg = kOXgI - OXgi * kOXgO
             
             # OQ (O18O) Geosphere
-            kOQgI = (k23t * OQbi + k23m * OQbi + k13 * OQti)
+            kOQgI = (k23 * OQbi + k13 * OQti)
             kOQgO = k31
             dOQg = kOQgI - OQgi * kOQgO
-            
+                
             return np.array([dOs, dXs, dO1Ds, dQs, dX1Ds, dQ1Ds, dO2s, dOXs, dOQs,
                              dCO2s, dCOXs, dCOQs, dO3s, dOOXs, dOOQs, dO2t, dOQt,
-                             dOXt, dCO2t, dCOQt, dCOXt,dO2b, dOQb, dOXb, dO2g, dOQg,
-                             dOXg])
-        
-        # Initial conditions for solver
-        y0 = np.array([Os0, Xs0, O1Ds0, Qs0, X1Ds0, Q1Ds0, O2s0, OXs0, OQs0, CO2s0,
-                       COXs0, COQs0, O3s0, OOXs0, OOQs0, O2t0, OQt0, OXt0, CO2t0,
-                       COQt0, COXt0, O2b0, OQb0, OXb0, O2g0,
-                       OQg0, OXg0])
-        
+                             dOXt, dCO2t, dCOQt, dCOXt, dO2b, dOQb, dOXb, dO2g,
+                             dOQg, dOXg])
         
         # Time grid
         t = np.arange(0, 10e5, 0.1)
-        
+            
         # Order of species in molar output
         moleso = np.array(['Os', 'Xs', 'O1Ds', 'Qs', 'X1Ds', 'Q1Ds', 'O2s', 'OXs',
                            'OQs', 'CO2s', 'COXs', 'COQs', 'O3s', 'OOXs', 'OOQs',
-                           'O2t', 'OQt', 'OXt', 'CO2t', 'COQt', 'COXt', 'O2b',
-                           'OQb', 'OXb', 'O2g', 'OQg', 'OXg'])
-        
-        
+                           'O2t', 'OQt', 'OXt', 'CO2t', 'COQt', 'COXt', 'O2b', 'OQb',
+                           'OXb', 'O2g', 'OQg', 'OXg'])
+    
+        # Initial conditions for solver
+        y0 = np.array([Os0, Xs0, O1Ds0, Qs0, X1Ds0, Q1Ds0, O2s0, OXs0, OQs0, CO2s0,
+                   COXs0, COQs0, O3s0, OOXs0, OOQs0, O2t0, OQt0, OXt0, CO2t0,
+                   COQt0, COXt0, O2b0, OQb0, OXb0, O2g0, OQg0, OXg0])
         
         # Solve the DEs
         moles = odeint(f, y0, t, mxstep = 1000000)
-            
+        
         # Set up output dataframe
         moles = pd.DataFrame(moles, columns = moleso)
         moles = pd.concat([moles.tail(1)]).reset_index(drop=True)
@@ -495,24 +463,27 @@ for trespi in tresp:
         moles['Index'] = moleso
         moles = moles.set_index('Index')
         
+        # Append to output
+        #solutions.append(moles)
+    
         #%% Isotopes output
-        
+    
         # Functions that calculate atomic isotopologue ratios (18O/16O and 17O/16O)
         # Z is either 18O (Q) or 17O (X) and O refers to non rare isotopologue
         def atomZ(isok2, Z, O):
             atomZ = (1 / isok2) * (Z / O)
             return atomZ
-        
+    
         # Use atomic isotopologue ratios to calculate delta values relative to SMOW
         def deltaZ(atomZ, rZ):
             deltaZ = 1000 * np.log(atomZ / rZ)
             return deltaZ
-        
+    
         # Use delta values to calculate cap17
         def capD(deltaX, deltaQ):
-            capD = deltaX - tequil * deltaQ
+            capD = deltaX - 0.528 * deltaQ
             return capD
-        
+    
         # Calculate the 18O/16O and 17O/16O ratios of molecules at end of model run
         R18_Os = atomZ(isok2[0], moles.loc['Qs'], moles.loc['Os'])
         R17_Os = atomZ(isok2[0], moles.loc['Xs'], moles.loc['Os'])
@@ -566,14 +537,14 @@ for trespi in tresp:
         
         # Order of species in isotope output dataframe
         isotopeso = np.array(['d18_Os', 'd18_O1Ds', 'd18_O2s', 'd18_CO2s', 'd18_O3s',
-                              'd18_O2t', 'd18_CO2t', 'd18_O2b', 'd18_O2g', 'd17_Os',
-                              'd17_O1Ds', 'd17_O2s', 'd17_CO2s', 'd17_O3s', 'd17_O2t',
-                              'd17_CO2t', 'd17_O2b', 'd17_O2g', 'D17_Os', 'D17_O1Ds',
-                              'D17_O2s', 'D17_CO2s', 'D17_O3s', 'D17_O2t', 'D17_CO2t',
-                              'D17_O2b', 'D17_O2g'])
-        
+                          'd18_O2t', 'd18_CO2t', 'd18_O2b', 'd18_O2g', 'd17_Os',
+                          'd17_O1Ds', 'd17_O2s', 'd17_CO2s', 'd17_O3s', 'd17_O2t',
+                          'd17_CO2t', 'd17_O2b', 'd17_O2g', 'D17_Os', 'D17_O1Ds',
+                          'D17_O2s', 'D17_CO2s', 'D17_O3s', 'D17_O2t', 'D17_CO2t',
+                          'D17_O2b', 'D17_O2g'])
+    
         #%% Mole fraction and flux outputs
-        
+    
         # Mole fraction of O2 in troposphere
         def xO2(O2, OX, OQ, air):
             xO2 = (O2 + OX + OQ) / air
@@ -588,15 +559,15 @@ for trespi in tresp:
         def xO3(O3, OOX, OOQ, air):
             xO3 = (O3 + OOX + OOQ) / air
             return xO3
-        
+    
         # D17O XO3 molar flux in per mil moles CO2/yr
         def xJ(xCO2s, capDCO2s, airs, k41):
             xJ = (xCO2s * capDCO2s * airs) / (1 / k41)
             return xJ
-        
+    
         # Calculate mole fraction of O2 in the troposphere
         xO2 = xO2(moles.loc['O2t'], moles.loc['OXt'], moles.loc['OQt'], airt)
-        
+    
         # Calculate mole fraction of CO2 in the troposphere
         xCO2t = xCO2(moles.loc['CO2t'], moles.loc['COXt'], moles.loc['COQt'], airt)
         
@@ -608,7 +579,7 @@ for trespi in tresp:
         
         # Calculate D17O flux
         xJ = xJ(xCO2s, D17_CO2s, airs, k41)
-        
+    
         # Order of species in mole fraction and isotope flux output
         fracfluxo = np.array(['xO2', 'xCO2t', 'xCO2s', 'xO3s', 'xJ'])
         
@@ -620,14 +591,14 @@ for trespi in tresp:
         
         # Assign calculated isotope values to dataframe
         isotopes = pd.DataFrame(np.array([d18_Os, d18_O1Ds, d18_O2s, d18_CO2s,
-                                          d18_O3s, d18_O2t, d18_CO2t, d18_O2b,
+                                          d18_O3s, d18_O2t, d18_CO2t, d18_CO2t,
                                           d18_O2g, d17_Os, d17_O1Ds, d17_O2s,
                                           d17_CO2s, d17_O3s, d17_O2t, d17_CO2t,
                                           d17_O2b, d17_O2g, D17_Os, D17_O1Ds,
                                           D17_O2s, D17_CO2s, D17_O3s, D17_O2t,
                                           D17_CO2t, D17_O2b, D17_O2g]),
                                 index = isotopeso)
-        
+    
         # Assign calculated mole fraction and flux values to dataframe
         fracflux = pd.DataFrame(np.array([xO2, xCO2t, xCO2s, xO3s, xJ]),
                                 index =fracfluxo)
@@ -635,103 +606,48 @@ for trespi in tresp:
         # Add isotopes and fracflux outputs
         sol.append(isotopes)
         fracfluxsol.append(fracflux)
-
-#%% Plots
-
-# D17 as function of fraction terrestrial biosphere
-D17_ftx506 = []
-for i in sol[0:10]:
+    
+# D17 as function of extreme [CO2] at 50 % modern GPP
+D17_CO2s50 = []
+for i in sol[0:50]:
     D17 = i.loc['D17_O2t'].values
-    D17_ftx506.append(D17)
-D17_ftx506 = np.hstack(D17_ftx506)
+    D17_CO2s50.append(D17)
+    
+D17_CO2s50 = np.hstack(D17_CO2s50)
 
-D17_ftx512 = []
-for i in sol[10:20]:
+# D17 as function of extreme [CO2] at 100 % modern GPP
+D17_CO2s100 = []
+for i in sol[50:100]:
     D17 = i.loc['D17_O2t'].values
-    D17_ftx512.append(D17)
-D17_ftx512 = np.hstack(D17_ftx512)
+    D17_CO2s100.append(D17)
+    
+D17_CO2s100 = np.hstack(D17_CO2s100)
 
-D17_ftx514 = []
-for i in sol[20:30]:
+# D17 as function of extreme [CO2] at 150 % modern GPP
+D17_CO2s150 = []
+for i in sol[100:150]:
     D17 = i.loc['D17_O2t'].values
-    D17_ftx514.append(D17)
-D17_ftx514 = np.hstack(D17_ftx514)
-
-D17_ftx5149 = []
-for i in sol[30:40]:
-    D17 = i.loc['D17_O2t'].values
-    D17_ftx5149.append(D17)
-D17_ftx5149 = np.hstack(D17_ftx5149)
-
-D17_ftx516 = []
-for i in sol[40:50]:
-    D17 = i.loc['D17_O2t'].values
-    D17_ftx516.append(D17)
-D17_ftx516 = np.hstack(D17_ftx516)
-
-D17_ftx520 = []
-for i in sol[50:60]:
-    D17 = i.loc['D17_O2t'].values
-    D17_ftx520.append(D17)
-D17_ftx520 = np.hstack(D17_ftx520)
-
-# Fit linear regression to data
-reg1 = stats.linregress(ftx, D17_ftx506)
-reg2 = stats.linregress(ftx, D17_ftx512)
-reg3 = stats.linregress(ftx, D17_ftx514)
-reg4 = stats.linregress(ftx, D17_ftx5149)
-reg5 = stats.linregress(ftx, D17_ftx516)
-reg6 = stats.linregress(ftx, D17_ftx520)
-
-# Print linear regression equations
-print("y506 = " + str(reg1.slope) + "  * x + " + str(reg1.intercept))
-print("y512 = " + str(reg2.slope) + " * x + " + str(reg2.intercept))
-print("y514 = " + str(reg3.slope) + " * x + " + str(reg3.intercept))
-print("y5149 = " + str(reg4.slope) + " * x + " + str(reg4.intercept))
-print("y516 = " + str(reg5.slope) + " * x + " + str(reg5.intercept))
-print("y520 = " + str(reg6.slope) + " * x + " + str(reg6.intercept))
+    D17_CO2s150.append(D17)
+    
+D17_CO2s150 = np.hstack(D17_CO2s150)
 
 # Setting up figure parameters
 fig1 = plt.figure(figsize = (5, 5))
 with sns.axes_style("whitegrid"):
     fig1 = fig1.add_subplot(1, 1, 1)
-fig1.set(xlim = (0, 1), ylim = (-.7, -.2))
-fig1.yaxis.set_ticks(np.arange(-.7, -.15, .05))
-fig1.xaxis.set_ticks(np.arange(0, 1.1, .1))
+fig1.set(xlim = (0, 30000), ylim = (-15, 0))
 
-# Plotting D17 of base model
-plt.vlines(.6, -0.7, -.424, colors='black', linestyles='dashed',
-           label = 'Base Model')
-plt.hlines(-.424, 0, .6, colors='black', linestyles='dashed')
-
-# Plotting D17 of Wostbrock 2020
-plt.vlines(.91, -0.7, -.441, colors='grey', linestyles='dashed',
-           label = 'Wostbrock 2020')
-plt.hlines(-.441, 0, .91, colors='grey', linestyles='dashed')
-
-# Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig1.plot(ftx, D17_ftx506, label='Angert 2003 PR', color='blue',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx512, label='Helman 2005 PR', color='orange',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx514, label='Angert2003 AOX', color='pink',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx5149, label='Young 2014 global avg.', color='green',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx516, label='Angert 2003 COX', color='red',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx520, label='Ash 2019 COX', color='purple',
-          linewidth='2')
-
-# Title and x and y labels
-fig1.set_xlabel("Terrestrial Biosphere Fraction")
+# Legend and title
+fig1.set_xlabel("[CO2] (ppm)")
 fig1.set_ylabel("$^{17}\Delta$ $O_2 $$_{trop}$ (‰)")
-fig1.set_title("$^{17}\Delta$ $O_2 $$_{trop}$ vs. Terrestrial Biosphere Fraction")
+fig1.set_title("$^{17}\Delta$ $O_2 $$_{trop}$ vs. [CO2] (ppm)")
 
-# Legend
-#fig1.legend(loc='best')
+CO2s = np.linspace(0, 30000)
+
+# Plotting D17 of O2t as function of [CO2]
+fig1.plot(CO2s, D17_CO2s50, label = '50% GPP', color = 'red')
+fig1.plot(CO2s, D17_CO2s100, label = '100 % GPP', color = 'blue')
+fig1.plot(CO2s, D17_CO2s150, label = '150 % GPP', color = 'green')
+fig1.legend(loc='best')
 plt.tight_layout()
-
-# Saving figure
-plt.savefig('D17O2tvtrespFtmod.jpg', dpi=800)
-
+plt.savefig('D17O2tvxtrCO2.jpg', dpi=800)
