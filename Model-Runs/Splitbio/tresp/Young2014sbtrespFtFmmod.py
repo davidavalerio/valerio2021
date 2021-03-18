@@ -22,7 +22,7 @@ fracfluxsol = []
 ftx = np.linspace(0, 1, 10)
 
 # Range of respiration thetas for terrestrial and marine biosphere
-tresp = np.array([.506, .512, .514, .5142, .5149, .516, .520, 0.525])
+tresp = np.array([.512, .5149, .516, .520, 0.497])
 
 # For loop for different tresp values
 for trespi in tresp:
@@ -639,108 +639,60 @@ for trespi in tresp:
 #%% Plots
 
 # D17 as function of fraction terrestrial biosphere
-D17_ftx506 = []
-for i in sol[0:10]:
-    D17 = i.loc['D17_O2t'].values
-    D17_ftx506.append(D17)
-D17_ftx506 = np.hstack(D17_ftx506)
-
 D17_ftx512 = []
-for i in sol[10:20]:
+for i in sol[0:10]:
     D17 = i.loc['D17_O2t'].values
     D17_ftx512.append(D17)
 D17_ftx512 = np.hstack(D17_ftx512)
 
-D17_ftx514 = []
-for i in sol[20:30]:
-    D17 = i.loc['D17_O2t'].values
-    D17_ftx514.append(D17)
-D17_ftx514 = np.hstack(D17_ftx514)
-
-D17_ftx5142 = []
-for i in sol[30:40]:
-    D17 = i.loc['D17_O2t'].values
-    D17_ftx5142.append(D17)
-D17_ftx5142 = np.hstack(D17_ftx5142)
-
 D17_ftx5149 = []
-for i in sol[40:50]:
+for i in sol[10:20]:
     D17 = i.loc['D17_O2t'].values
     D17_ftx5149.append(D17)
 D17_ftx5149 = np.hstack(D17_ftx5149)
 
 D17_ftx516 = []
-for i in sol[50:60]:
+for i in sol[20:30]:
     D17 = i.loc['D17_O2t'].values
     D17_ftx516.append(D17)
 D17_ftx516 = np.hstack(D17_ftx516)
 
 D17_ftx520 = []
-for i in sol[60:70]:
+for i in sol[30:40]:
     D17 = i.loc['D17_O2t'].values
     D17_ftx520.append(D17)
 D17_ftx520 = np.hstack(D17_ftx520)
 
-D17_ftx525 = []
-for i in sol[70:80]:
+D17_ftx497 = []
+for i in sol[40:50]:
     D17 = i.loc['D17_O2t'].values
-    D17_ftx525.append(D17)
-D17_ftx525 = np.hstack(D17_ftx525)
-
-# Fit linear regression to data
-reg1 = stats.linregress(ftx, D17_ftx506)
-reg2 = stats.linregress(ftx, D17_ftx512)
-reg3 = stats.linregress(ftx, D17_ftx514)
-reg4 = stats.linregress(ftx, D17_ftx5142)
-reg5 = stats.linregress(ftx, D17_ftx5149)
-reg6 = stats.linregress(ftx, D17_ftx516)
-reg7 = stats.linregress(ftx, D17_ftx520)
-reg8 = stats.linregress(ftx, D17_ftx525)
-
-# Print linear regression equations
-print("y506 = " + str(reg1.slope) + "  * x + " + str(reg1.intercept))
-print("y512 = " + str(reg2.slope) + " * x + " + str(reg2.intercept))
-print("y514 = " + str(reg3.slope) + " * x + " + str(reg3.intercept))
-print("y5143 = " + str(reg4.slope) + " * x + " + str(reg4.intercept))
-print("y5149 = " + str(reg5.slope) + " * x + " + str(reg5.intercept))
-print("y516 = " + str(reg6.slope) + " * x + " + str(reg6.intercept))
-print("y520 = " + str(reg7.slope) + " * x + " + str(reg7.intercept))
-print("y525 = " + str(reg8.slope) + " * x + " + str(reg8.intercept))
+    D17_ftx497.append(D17)
+D17_ftx497 = np.hstack(D17_ftx497)
 
 # Setting up figure parameters
 fig1 = plt.figure(figsize = (5, 5))
 with sns.axes_style("whitegrid"):
     fig1 = fig1.add_subplot(1, 1, 1)
-fig1.set(xlim = (0, 1), ylim = (-.7, -.2))
-fig1.yaxis.set_ticks(np.arange(-.7, -.15, .05))
-fig1.xaxis.set_ticks(np.arange(0, 1.1, .1))
+fig1.set(xlim = (0, 1), ylim = (-1, -.2))
 
-# Plotting D17 of base model
-plt.vlines(.6, -0.7, -.424, colors='black', linestyles='dashed',
-           label = 'Base Model')
-plt.hlines(-.424, 0, .6, colors='black', linestyles='dashed')
+# Plotting ft from Field1998
+plt.vlines(0.6, -1, 0, color='green', linestyles='dotted',
+           label = 'Field1998, ft = 0.6')
 
 # Plotting D17 of Wostbrock 2020
-plt.vlines(.91, -0.7, -.441, colors='grey', linestyles='dashed',
-           label = 'Wostbrock 2020')
-plt.hlines(-.441, 0, .91, colors='grey', linestyles='dashed')
+plt.hlines(-.441, 0, 1, colors='grey', linestyles='dashed',
+           label = '$^{17}\Delta$ $O_2 $$_{trop, Wostbrock}$')
 
 # Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig1.plot(ftx, D17_ftx506, label='0.506 PR', color='blue',
+fig1.plot(ftx, D17_ftx512, label='0.512 PR', color='blue',
           linewidth='2')
-fig1.plot(ftx, D17_ftx512, label='0.512 PR', color='orange',
+fig1.plot(ftx, D17_ftx5149, label='0.5149 GA', color='red',
           linewidth='2')
-fig1.plot(ftx, D17_ftx514, label='0.514 AOX', color='pink',
+fig1.plot(ftx, D17_ftx516, label='0.516 COX', color='green',
           linewidth='2')
-fig1.plot(ftx, D17_ftx5142, label='0.5143 GA', color='grey',
+fig1.plot(ftx, D17_ftx520, label='0.520 COX', color='orange',
           linewidth='2')
-fig1.plot(ftx, D17_ftx5149, label='0.5149 GA', color='green',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx516, label='0.516 COX', color='red',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx520, label='0.520 COX', color='purple',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx525, label='0.525 MR', color='black',
+fig1.plot(ftx, D17_ftx497, label='0.497 MR', color='black',
           linewidth='2')
 
 # Title and x and y labels

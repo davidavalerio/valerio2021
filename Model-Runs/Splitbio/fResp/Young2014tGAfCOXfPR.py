@@ -18,10 +18,10 @@ import seaborn as sns
 
 # COX and PR Thetas
 tCOX = np.array([0.516, 0.520]) # tCOX = 0.516 from Helman2005 and 0.520 from Ash2019
-tPR = np.array([0.506, 0.512]) # tPR = 0.506 from Angert2003 and 0.512 from Helman2005
+tPR = np.array([0.512]) # tPR = 0.506 from Angert2003 and 0.512 from Helman2005
 
 # tGA that reproduces Wostbrock2020 D17_O2t value
-tGA = 0.5176
+tGA = 0.5142
 
 # COX and PR relative fractions
 fCOX = np.linspace(0, 1, 10)
@@ -35,21 +35,13 @@ def tGAc(fCOX, tCOX, tPR):
     return tGAc;
 
 # tGA for variable fCOX with tCOXHelman and tPRHelman
-tGAHH = tGAc(fCOX, tCOX[0], tPR[1])
+tGAHH = tGAc(fCOX, tCOX[0], tPR[0])
 
 # tGA for variable fCOX with tCOXAsh and tPRHelman
-tGAAH = tGAc(fCOX, tCOX[1], tPR[1])
-
-# tGA for variable fCOX with tCOXAsh and tPRAngert
-tGAAA = tGAc(fCOX, tCOX[1], tPR[0])
-
-# tGA for variable fCOX with tCOXHelman and tPRAngert
-tGAHA = tGAc(fCOX, tCOX[0], tPR[0])
+tGAAH = tGAc(fCOX, tCOX[1], tPR[0])
 
 # tGAHH -> tGAHA
 tGAall = np.append(tGAHH, tGAAH)
-tGAall = np.append(tGAall, tGAAA)
-tGAall = np.append(tGAall, tGAHA)
 
 #%% D17O2t as function of fCOX and fPR
 
@@ -671,46 +663,13 @@ for tGAi in tGAall:
     
 #%% Plots
 
-# Plotting tGA as function of fCOX for different tCOX and tPR
-
-# Setting up figure parameters
-fig1 = plt.figure(figsize = (5, 5))
-with sns.axes_style("whitegrid"):
-    fig1 = fig1.add_subplot(1, 1, 1)
-fig1.set(xlim = (0, 1), ylim = (.5, .52))
-#fig1.yaxis.set_ticks(np.arange(-.7, -.15, .05))
-#fig1.xaxis.set_ticks(np.arange(0, 1.1, .1))
-
-# Plotting tGA as function of fCOX
-fig1.plot(fCOX, tGAHH, label = "$\Theta_{COX}$ = 0.516 and $\Theta_{PR}$ = 0.512")
-fig1.plot(fCOX, tGAAH, label = "$\Theta_{COX}$ = 0.520 and $\Theta_{PR}$ = 0.512")
-fig1.plot(fCOX, tGAAA, label = "$\Theta_{COX}$ = 0.520 and $\Theta_{PR}$ = 0.506")
-fig1.plot(fCOX, tGAHA, label = "$\Theta_{COX}$ = 0.516 and $\Theta_{PR}$ = 0.506")
-
-# Plotting tGAWB and tGAY
-plt.hlines(0.5142, 0, 1, colors='grey', linestyles='dashed',
-           label = '$\Theta_{Wostbrock}$ = 0.5142')
-plt.hlines(0.5149, 0, 1, colors='black', linestyles='dashed',
-           label = '$\Theta_{Young}$ = 0.5149')
-
-# Title and x and y labels
-fig1.set_xlabel("$\Theta_{COX}$ Fraction")
-fig1.set_ylabel("$\Theta_{GA}$")
-fig1.set_title("$\Theta_{GA}$ vs. $\Theta_{COX}$ Fraction")
-
-# Legend
-fig1.legend(loc='best')
-plt.tight_layout()
-
 # Plotting D17O2t as a function of fCOX for different tCOX and tPR
 
 # Setting up figure parameters
 fig2 = plt.figure(figsize = (5, 5))
 with sns.axes_style("whitegrid"):
     fig2 = fig2.add_subplot(1, 1, 1)
-fig2.set(xlim = (0, 1), ylim = (-.8, -.3))
-#fig2.yaxis.set_ticks(np.arange(-.7, -.15, .05))
-#fig2.xaxis.set_ticks(np.arange(0, 1.1, .1))
+fig2.set(xlim = (0, 1), ylim = (-.6, -.3))
 
 # D17 for different tCOX and tPR
 D17_tGAHH = []
@@ -725,33 +684,15 @@ for i in sol[10:20]:
     D17_tGAAH.append(D17)
 D17_tGAAH = np.hstack(D17_tGAAH)
 
-D17_tGAAA = []
-for i in sol[20:30]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGAAA.append(D17)
-D17_tGAAA = np.hstack(D17_tGAAA)
-
-D17_tGAHA = []
-for i in sol[30:40]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGAHA.append(D17)
-D17_tGAHA = np.hstack(D17_tGAHA)
-
 # Fit linear regression to data
 reg1 = stats.linregress(fCOX, D17_tGAHH)
 reg2 = stats.linregress(fCOX, D17_tGAAH)
-reg3 = stats.linregress(fCOX, D17_tGAAA)
-reg4 = stats.linregress(fCOX, D17_tGAHA)
 
 # fCOX for Young2014 and Wostbrock2020 given different tCOX and tPR
 fCOXHHYO = (-0.424 - reg1.intercept) / reg1.slope
 fCOXHHWB = (-0.441 - reg1.intercept) / reg1.slope
 fCOXAHYO = (-0.424 - reg2.intercept) / reg2.slope
 fCOXAHWB = (-0.441 - reg2.intercept) / reg2.slope
-fCOXAAYO = (-0.424 - reg3.intercept) / reg3.slope
-fCOXAAWB = (-0.441 - reg3.intercept) / reg3.slope
-fCOXHAYO = (-0.424 - reg4.intercept) / reg4.slope
-fCOXHAWB = (-0.441 - reg4.intercept) / reg4.slope
 
 print("fCOX for Young2014 given tCOXHelman and tPRHelman is " + str(fCOXHHYO) + ".")
 print("fPR for Young2014 given tCOXHelman and tPRHelman is " + str(1 - fCOXHHYO) + ".")
@@ -761,34 +702,25 @@ print("fCOX for Young2014 given tCOXAsh and tPRHelman is " + str(fCOXAHYO) + "."
 print("fPR for Young2014 given tCOXAsh and tPRHelman is " + str(1 - fCOXAHYO) + ".")
 print("fCOX for Wostbrock2020 given tCOXAsh and tPRHelman is " + str(fCOXAHWB) + ".")
 print("fPR for Wostbrock2020 given tCOXAsh and tPRHelman is " + str(1 - fCOXAHWB) + ".")
-print("fCOX for Young2014 given tCOXAsh and tPRAngert is " + str(fCOXAAYO) + ".")
-print("fPR for Young2014 given tCOXAsh and tPRAngert is " + str(1 - fCOXAAYO) + ".")
-print("fCOX for Wostbrock2020 given tCOXAsh and tPRAngert is " + str(fCOXAAWB) + ".")
-print("fPR for Wostbrock2020 given tCOXAsh and tPRAngert is " + str(1 - fCOXAAWB) + ".")
-print("fCOX for Young2014 given tCOXHelman and tPRAngert is " + str(fCOXHAYO) + ".")
-print("fPR for Young2014 given tCOXHelman and tPRAngert is " + str(1 - fCOXHAYO) + ".")
-print("fCOX for Wostbrock 2020 given tCOXHelman and tPRAngert is " + str(fCOXHAWB) + ".")
-print("fPR for Wostbrock 2020 given tCOXHelman and tPRAngert is " + str(1 - fCOXHAWB) + ".")
 
+# Plotting Blunier2012 fCOX
+plt.vlines(0.73, -1, 0, color='green', linestyles='dotted',
+           label = 'Angert2003, fCOX = 0.73')
 
 # Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig2.plot(fCOX, D17_tGAHH, label='$\Theta_{COX}$ = 0.516 and $\Theta_{PR}$ = 0.512')
-fig2.plot(fCOX, D17_tGAAH, label='$\Theta_{COX}$ = 0.520 and $\Theta_{PR}$ = 0.512')
-fig2.plot(fCOX, D17_tGAAA, label='$\Theta_{COX}$ = 0.520 and $\Theta_{PR}$ = 0.506')
-fig2.plot(fCOX, D17_tGAHA, label='$\Theta_{COX}$ = 0.516 and $\Theta_{PR}$ = 0.506')
-
-# Plotting D17O2t of Young2014
-plt.hlines(-0.424, 0, 1, colors='black', linestyles='dashed',
-           label='$^{17}\Delta$ $O_2 $$_{trop, Young}$')
+fig2.plot(fCOX, D17_tGAHH, color='blue',
+          label='$\Theta_{COX}$ = 0.516 and $\Theta_{PR}$ = 0.512')
+fig2.plot(fCOX, D17_tGAAH, color = 'red',
+          label='$\Theta_{COX}$ = 0.520 and $\Theta_{PR}$ = 0.512')
 
 # Plotting D17 of Wostbrock 2020
 plt.hlines(-0.441, 0, 1, colors='grey', linestyles='dashed',
            label='$^{17}\Delta$ $O_2 $$_{trop, Wostbrock}$')
 
 # Title and x and y labels
-fig2.set_xlabel("$\Theta_{COX}$ Fraction")
+fig2.set_xlabel("COX Fraction")
 fig2.set_ylabel("$^{17}\Delta$ $O_2 $$_{trop}$ (‰)")
-fig2.set_title("$^{17}\Delta$ $O_2 $$_{trop}$ vs. $\Theta_{COX}$ Fraction")
+fig2.set_title("$^{17}\Delta$ $O_2 $$_{trop}$ vs. COX Fraction (fCOX)")
 
 # Legend
 fig2.legend(loc='best')

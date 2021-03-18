@@ -817,32 +817,40 @@ for i in sol[3:7]:
     D17_tGARU.append(D17)
 D17_tGARU = np.hstack(D17_tGARU)
 
-# Plotting D17O2t as a function of tGA
-fig1.scatter(tGA[0:3], D17_tGAHU, label='Hebrew University', color='blue')
-fig1.scatter(tGA[3:7], D17_tGARU, label='Rice University', color='red')
-
 # Plotting 30% Mehler fractions
 plt.vlines(tGA[0], -1, D17_tGAHU[0], color='green', linestyles='dotted',
-           label='30% marine Mehler')
+           label='fMRm = 0.3')
 plt.vlines(tGA[3], -1, D17_tGARU[0], color='green', linestyles='dotted')
 
 # Plotting 40% Mehler fractions
 plt.vlines(tGA[1], -1, D17_tGAHU[1], color='orange', linestyles='dotted',
-           label='40% marine Mehler')
+           label='fMRm = 0.4')
 plt.vlines(tGA[4], -1, D17_tGARU[1], color='orange', linestyles='dotted')
 
 # Plotting 50% Mehler fractions
 plt.vlines(tGA[2], -1, D17_tGAHU[2], color='purple', linestyles='dotted',
-           label='50% marine Mehler')
+           label='fMRm = 0.5')
 plt.vlines(tGA[5], -1, D17_tGARU[2], color='purple', linestyles='dotted')
 
-# Plotting D17O2t of Young2014
-plt.hlines(-0.424, 0, 1, colors='black', linestyles='dashed',
-           label='$^{17}\Delta$ $O_2 $$_{trop, Young}$')
+# Plotting D17O2t as a function of tGA
+fig1.scatter(tGA[0:3], D17_tGAHU, label='Hebrew University', color='blue')
+fig1.scatter(tGA[3:7], D17_tGARU, label='Rice University', color='red')
 
 # Plotting D17 of Wostbrock 2020
-plt.hlines(-0.441, 0, 1, colors='grey', linestyles='dashed',
+plt.hlines(-0.441, 0, 1, colors='black', linestyles='dashed',
            label='$^{17}\Delta$ $O_2 $$_{trop, Wostbrock}$')
+
+# Plotting D17O2t of LuzBarkan2011
+R17LB = 3.75354336e-4
+R18LB = 2.09376293e-3
+
+d17_O2tLB = deltaZ(R17LB, rX)
+d18_O2tLB = deltaZ(R18LB, rQ)
+
+D17_O2tLB = capD(d17_O2tLB, d18_O2tLB)
+
+plt.hlines(D17_O2tLB, 0, 1, colors='grey', linestyles='dashed',
+           label='$^{17}\Delta$ $O_2 $$_{trop, LuzBarkan}$')
 
 # Title and x and y labels
 fig1.set_xlabel("$\Theta_{GA}$")
@@ -855,4 +863,11 @@ plt.tight_layout()
 
 # Saving figure
 plt.savefig('D17O2vtGA10.jpg', dpi=800)
+
+print("The global marine O2 flux of the Mehler reaction assuming it takes up" +
+      " 30 percent of gross production is " + str(FO2MRm3) + '.\n')
+print("The global marine O2 flux of the Mehler reaction assuming it takes up" +
+      " 40 percent of gross production is " + str(FO2MRm4) + '.\n')
+print("The global marine O2 flux of the Mehler reaction assuming it takes up" +
+      " 50 percent of gross production is " + str(FO2MRm5) + '.')
 

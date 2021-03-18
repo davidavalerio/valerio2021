@@ -18,8 +18,8 @@ import seaborn as sns
 
 # COX and PR Thetas
 tCOX = np.array([0.516, 0.520]) # tCOX = 0.516 from Helman2005 and 0.520 from Ash2019
-tPR = np.array([0.506, 0.512]) # tPR = 0.506 from Angert2003 and 0.512 from Helman2005
-tMR = np.array([0.497, 0.526]) # tMR = 0.497 for Synechocystis and 0.526 for pea from Helman 2005
+tPR = np.array([0.512]) # tPR = 0.512 from Helman2005
+tMR = np.array([0.497]) # tMR = 0.497 for Synechocystis
 
 # tGA that reproduces Wostbrock2020 D17_O2t value
 tGA = 0.5142
@@ -49,53 +49,13 @@ def tGAc(fCOX, fMR, tCOX, tPR, tMR):
     return tGAc;
 
 # tGA for variable fCOX with fMR = 0.1 and tCOXHelman, tPRHelman, and tMRSynech
-tGA1HHS = tGAc(fCOX1, fMR[0], tCOX[0], tPR[1], tMR[0])
+tGA1HHS = tGAc(fCOX1, fMR[0], tCOX[0], tPR[0], tMR[0])
 
 # tGA for variable fCOX with fMR = 0.1 with tCOXAsh, tPRHelman, and tMRSynech
-tGA1AHS = tGAc(fCOX1, fMR[0], tCOX[1], tPR[1], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.1 and tCOXAsh, tPRAngert, and tMRSynech
-tGA1AAS = tGAc(fCOX1, fMR[0], tCOX[1], tPR[0], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.1 and tCOXHelman, tPRAngert, and tMRSynech
-tGA1HAS = tGAc(fCOX1, fMR[0], tCOX[0], tPR[0], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.2 and tCOXHelman, tPRHelman, and tMRSynech
-tGA2HHS = tGAc(fCOX2, fMR[1], tCOX[0], tPR[1], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.2 with tCOXAsh, tPRHelman, and tMRSynech
-tGA2AHS = tGAc(fCOX2, fMR[1], tCOX[1], tPR[1], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.2 and tCOXAsh, tPRAngert, and tMRSynech
-tGA2AAS = tGAc(fCOX2, fMR[1], tCOX[1], tPR[0], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.2 and tCOXHelman, tPRAngert, and tMRSynech
-tGA2HAS = tGAc(fCOX2, fMR[1], tCOX[0], tPR[0], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.3 and tCOXHelman, tPRHelman, and tMRSynech
-tGA3HHS = tGAc(fCOX3, fMR[2], tCOX[0], tPR[1], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.3 with tCOXAsh, tPRHelman, and tMRSynech
-tGA3AHS = tGAc(fCOX3, fMR[2], tCOX[1], tPR[1], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.3 and tCOXAsh, tPRAngert, and tMRSynech
-tGA3AAS = tGAc(fCOX3, fMR[2], tCOX[1], tPR[0], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.3 and tCOXHelman, tPRAngert, and tMRSynech
-tGA3HAS = tGAc(fCOX3, fMR[2], tCOX[0], tPR[0], tMR[0])
+tGA1AHS = tGAc(fCOX1, fMR[0], tCOX[1], tPR[0], tMR[0])
 
 # tGAall
 tGAall = np.append(tGA1HHS, tGA1AHS)
-tGAall = np.append(tGAall, tGA1AAS)
-tGAall = np.append(tGAall, tGA1HAS)
-tGAall = np.append(tGAall, tGA2HHS)
-tGAall = np.append(tGAall, tGA2AHS)
-tGAall = np.append(tGAall, tGA2AAS)
-tGAall = np.append(tGAall, tGA2HAS)
-tGAall = np.append(tGAall, tGA3HHS)
-tGAall = np.append(tGAall, tGA3AHS)
-tGAall = np.append(tGAall, tGA3AAS)
-tGAall = np.append(tGAall, tGA3HAS)
 
 #%% D17O2t as function of fCOX, fPR, and fMR
 
@@ -725,7 +685,7 @@ for tGAi in tGAall:
 fig1= plt.figure(figsize = (5, 5))
 with sns.axes_style("whitegrid"):
     fig1 = fig1.add_subplot(1, 1, 1)
-fig1.set(xlim = (0, 0.9), ylim = (-.8, -.3))
+fig1.set(xlim = (0, 0.9), ylim = (-.7, -.3))
 #fig2.yaxis.set_ticks(np.arange(-.7, -.15, .05))
 #fig2.xaxis.set_ticks(np.arange(0, 1.1, .1))
 
@@ -742,33 +702,15 @@ for i in sol[10:20]:
     D17_tGA1AHS.append(D17)
 D17_tGA1AHS = np.hstack(D17_tGA1AHS)
 
-D17_tGA1AAS = []
-for i in sol[20:30]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA1AAS.append(D17)
-D17_tGA1AAS = np.hstack(D17_tGA1AAS)
-
-D17_tGA1HAS = []
-for i in sol[30:40]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA1HAS.append(D17)
-D17_tGA1HAS = np.hstack(D17_tGA1HAS)
-
 # Fit linear regression to data
 reg1 = stats.linregress(fCOX1, D17_tGA1HHS)
 reg2 = stats.linregress(fCOX1, D17_tGA1AHS)
-reg3 = stats.linregress(fCOX1, D17_tGA1AAS)
-reg4 = stats.linregress(fCOX1, D17_tGA1HAS)
 
 # fCOX for Young2014 and Wostbrock2020 given different tCOX and tPR
 fCOX1HHSYO = (-0.424 - reg1.intercept) / reg1.slope
 fCOX1HHSWB = (-0.441 - reg1.intercept) / reg1.slope
 fCOX1AHSYO = (-0.424 - reg2.intercept) / reg2.slope
 fCOX1AHSWB = (-0.441 - reg2.intercept) / reg2.slope
-fCOX1AASYO = (-0.424 - reg3.intercept) / reg3.slope
-fCOX1AASWB = (-0.441 - reg3.intercept) / reg3.slope
-fCOX1HASYO = (-0.424 - reg4.intercept) / reg4.slope
-fCOX1HASWB = (-0.441 - reg4.intercept) / reg4.slope
 
 print("fCOX for Young2014 for fMR = 0.1 and given tCOXHelman and tPRHelman is " + str(fCOX1HHSYO) + ".")
 print("fPR for Young2014 for fMR = 0.1 and given tCOXHelman and tPRHelman is " + str(0.9 - fCOX1HHSYO) + ".")
@@ -778,34 +720,25 @@ print("fCOX for Young2014 for fMR = 0.1 and given tCOXAsh and tPRHelman is " + s
 print("fPR for Young2014 for fMR = 0.1 and given tCOXAsh and tPRHelman is " + str(0.9 - fCOX1AHSYO) + ".")
 print("fCOX for Wostbrock2020 for fMR = 0.1 and given tCOXAsh and tPRHelman is " + str(fCOX1AHSWB) + ".")
 print("fPR for Wostbrock2020 for fMR = 0.1 and given tCOXAsh and tPRHelman is " + str(0.9 - fCOX1AHSWB) + ".")
-print("fCOX for Young2014 for fMR = 0.1 and given tCOXAsh and tPRAngert is " + str(fCOX1AASYO) + ".")
-print("fPR for Young2014 for fMR = 0.1 and given tCOXAsh and tPRAngert is " + str(0.9 - fCOX1AASYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.1 and given tCOXAsh and tPRAngert is " + str(fCOX1AASWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.1 and given tCOXAsh and tPRAngert is " + str(0.9 - fCOX1AASWB) + ".")
-print("fCOX for Young2014 for fMR = 0.1 and given tCOXHelman and tPRAngert is " + str(fCOX1HASYO) + ".")
-print("fPR for Young2014 for fMR = 0.1 and given tCOXHelman and tPRAngert is " + str(0.9 - fCOX1HASYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.1 and 2020 given tCOXHelman and tPRAngert is " + str(fCOX1HASWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.1 and 2020 given tCOXHelman and tPRAngert is " + str(0.9 - fCOX1HASWB) + ".\n")
 
+# Plotting Blunier2012 fCOX
+plt.vlines(0.66, -1, 0, color='green', linestyles='dotted',
+           label = 'Angert2003, fCOX = 0.66')
 
 # Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig1.plot(fCOX1, D17_tGA1HHS, label='$\Theta_{COX}$ = 0.516, $\Theta_{PR}$ = 0.512, $\Theta_{MR}$ = 0.497')
-fig1.plot(fCOX1, D17_tGA1AHS, label='$\Theta_{COX}$ = 0.520, $\Theta_{PR}$ = 0.512, $\Theta_{MR}$ = 0.497')
-fig1.plot(fCOX1, D17_tGA1AAS, label='$\Theta_{COX}$ = 0.520, $\Theta_{PR}$ = 0.506, $\Theta_{MR}$ = 0.497')
-fig1.plot(fCOX1, D17_tGA1HAS, label='$\Theta_{COX}$ = 0.516, $\Theta_{PR}$ = 0.506, $\Theta_{MR}$ = 0.497')
-
-# Plotting D17O2t of Young2014
-plt.hlines(-0.424, 0, 1, colors='black', linestyles='dashed',
-           label='$^{17}\Delta$ $O_2 $$_{trop, Young}$')
+fig1.plot(fCOX1, D17_tGA1HHS, color='blue',
+          label='$\Theta_{COX}$ = 0.516, $\Theta_{PR}$ = 0.512, $\Theta_{MR}$ = 0.497')
+fig1.plot(fCOX1, D17_tGA1AHS, color='red',
+          label='$\Theta_{COX}$ = 0.520, $\Theta_{PR}$ = 0.512, $\Theta_{MR}$ = 0.497')
 
 # Plotting D17 of Wostbrock 2020
 plt.hlines(-0.441, 0, 1, colors='grey', linestyles='dashed',
            label='$^{17}\Delta$ $O_2 $$_{trop, Wostbrock}$')
 
 # Title and x and y labels
-fig1.set_xlabel("$\Theta_{COX}$ Fraction")
+fig1.set_xlabel("COX Fraction")
 fig1.set_ylabel("$^{17}\Delta$ $O_2 $$_{trop}$ (‰)")
-fig1.set_title("$^{17}\Delta$ $O_2 $$_{trop}$ vs. $\Theta_{COX}$ Fraction for fMR = 0.1")
+fig1.set_title("$^{17}\Delta$ $O_2 $$_{trop}$ vs. COX Fraction (fCOX) for fMR = 0.1")
 
 # Legend
 fig1.legend(loc='best')
@@ -813,196 +746,3 @@ plt.tight_layout()
 
 # Saving figure
 plt.savefig('D17O2tfCOXfPRfMR1.jpg', dpi=800)
-
-# fMR = 0.2
-
-# Setting up figure parameters
-fig2= plt.figure(figsize = (5, 5))
-with sns.axes_style("whitegrid"):
-    fig2 = fig2.add_subplot(1, 1, 1)
-fig2.set(xlim = (0, 0.8), ylim = (-.8, -.3))
-#fig2.yaxis.set_ticks(np.arange(-.7, -.15, .05))
-#fig2.xaxis.set_ticks(np.arange(0, 1.1, .1))
-
-# D17 for fMR = 0.1 and different tCOX and tPR
-D17_tGA2HHS = []
-for i in sol[40:50]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA2HHS.append(D17)
-D17_tGA2HHS = np.hstack(D17_tGA2HHS)
-
-D17_tGA2AHS = []
-for i in sol[50:60]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA2AHS.append(D17)
-D17_tGA2AHS = np.hstack(D17_tGA2AHS)
-
-D17_tGA2AAS = []
-for i in sol[60:70]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA2AAS.append(D17)
-D17_tGA2AAS = np.hstack(D17_tGA2AAS)
-
-D17_tGA2HAS = []
-for i in sol[70:80]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA2HAS.append(D17)
-D17_tGA2HAS = np.hstack(D17_tGA2HAS)
-
-# Fit linear regression to data
-reg5 = stats.linregress(fCOX2, D17_tGA2HHS)
-reg6 = stats.linregress(fCOX2, D17_tGA2AHS)
-reg7 = stats.linregress(fCOX2, D17_tGA2AAS)
-reg8 = stats.linregress(fCOX2, D17_tGA2HAS)
-
-# fCOX for Young2014 and Wostbrock2020 given different tCOX and tPR
-fCOX2HHSYO = (-0.424 - reg5.intercept) / reg5.slope
-fCOX2HHSWB = (-0.441 - reg5.intercept) / reg5.slope
-fCOX2AHSYO = (-0.424 - reg6.intercept) / reg6.slope
-fCOX2AHSWB = (-0.441 - reg6.intercept) / reg6.slope
-fCOX2AASYO = (-0.424 - reg7.intercept) / reg7.slope
-fCOX2AASWB = (-0.441 - reg7.intercept) / reg7.slope
-fCOX2HASYO = (-0.424 - reg8.intercept) / reg8.slope
-fCOX2HASWB = (-0.441 - reg8.intercept) / reg8.slope
-
-print("fCOX for Young2014 for fMR = 0.2 and given tCOXHelman and tPRHelman is " + str(fCOX2HHSYO) + ".")
-print("fPR for Young2014 for fMR = 0.2 given tCOXHelman and tPRHelman is " + str(0.8 - fCOX2HHSYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.2 given tCOXHelman and tPRHelman is " + str(fCOX2HHSWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.2 given tCOXHelman and tPRHelman is " + str(0.8 - fCOX2HHSWB) + ".")
-print("fCOX for Young2014 for fMR = 0.2 given tCOXAsh and tPRHelman is " + str(fCOX2AHSYO) + ".")
-print("fPR for Young2014 for fMR = 0.2 given tCOXAsh and tPRHelman is " + str(0.8 - fCOX2AHSYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.2 given tCOXAsh and tPRHelman is " + str(fCOX2AHSWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.2 given tCOXAsh and tPRHelman is " + str(0.8 - fCOX2AHSWB) + ".")
-print("fCOX for Young2014 for fMR = 0.2 given tCOXAsh and tPRAngert is " + str(fCOX2AASYO) + ".")
-print("fPR for Young2014 for fMR = 0.2 given tCOXAsh and tPRAngert is " + str(0.8 - fCOX2AASYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.2 given tCOXAsh and tPRAngert is " + str(fCOX2AASWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.2 given tCOXAsh and tPRAngert is " + str(0.8 - fCOX2AASWB) + ".")
-print("fCOX for Young2014 for fMR = 0.2 given tCOXHelman and tPRAngert is " + str(fCOX2HASYO) + ".")
-print("fPR for Young2014 for fMR = 0.2 given tCOXHelman and tPRAngert is " + str(0.8 - fCOX2HASYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.2 given tCOXHelman and tPRAngert is " + str(fCOX2HASWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.2 given tCOXHelman and tPRAngert is " + str(0.8 - fCOX2HASWB) + ".\n")
-
-
-# Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig2.plot(fCOX2, D17_tGA2HHS, label='$\Theta_{COX}$ = 0.516, $\Theta_{PR}$ = 0.512, $\Theta_{MR}$ = 0.497')
-fig2.plot(fCOX2, D17_tGA2AHS, label='$\Theta_{COX}$ = 0.520, $\Theta_{PR}$ = 0.512, $\Theta_{MR}$ = 0.497')
-fig2.plot(fCOX2, D17_tGA2AAS, label='$\Theta_{COX}$ = 0.520, $\Theta_{PR}$ = 0.506, $\Theta_{MR}$ = 0.497')
-fig2.plot(fCOX2, D17_tGA2HAS, label='$\Theta_{COX}$ = 0.516, $\Theta_{PR}$ = 0.506, $\Theta_{MR}$ = 0.497')
-
-# Plotting D17O2t of Young2014
-plt.hlines(-0.424, 0, 1, colors='black', linestyles='dashed',
-           label='$^{17}\Delta$ $O_2 $$_{trop, Young}$')
-
-# Plotting D17 of Wostbrock 2020
-plt.hlines(-0.441, 0, 1, colors='grey', linestyles='dashed',
-           label='$^{17}\Delta$ $O_2 $$_{trop, Wostbrock}$')
-
-# Title and x and y labels
-fig2.set_xlabel("$\Theta_{COX}$ Fraction")
-fig2.set_ylabel("$^{17}\Delta$ $O_2 $$_{trop}$ (‰)")
-fig2.set_title("$^{17}\Delta$ $O_2 $$_{trop}$ vs. $\Theta_{COX}$ Fraction for fMR = 0.2")
-
-# Legend
-fig2.legend(loc='best')
-plt.tight_layout()
-
-# Saving figure
-plt.savefig('D17O2tfCOXfPRfMR2.jpg', dpi=800)
-
-# fMR = 0.3
-
-# Setting up figure parameters
-fig3= plt.figure(figsize = (5, 5))
-with sns.axes_style("whitegrid"):
-    fig3 = fig3.add_subplot(1, 1, 1)
-fig3.set(xlim = (0, 0.7), ylim = (-.8, -.3))
-#fig2.yaxis.set_ticks(np.arange(-.7, -.15, .05))
-#fig2.xaxis.set_ticks(np.arange(0, 1.1, .1))
-
-# D17 for fMR = 0.1 and different tCOX and tPR
-D17_tGA3HHS = []
-for i in sol[80:90]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA3HHS.append(D17)
-D17_tGA3HHS = np.hstack(D17_tGA3HHS)
-
-D17_tGA3AHS = []
-for i in sol[90:100]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA3AHS.append(D17)
-D17_tGA3AHS = np.hstack(D17_tGA3AHS)
-
-D17_tGA3AAS = []
-for i in sol[100:110]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA3AAS.append(D17)
-D17_tGA3AAS = np.hstack(D17_tGA3AAS)
-
-D17_tGA3HAS = []
-for i in sol[110:120]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA3HAS.append(D17)
-D17_tGA3HAS = np.hstack(D17_tGA3HAS)
-
-# Fit linear regression to data
-reg9 = stats.linregress(fCOX3, D17_tGA3HHS)
-reg10 = stats.linregress(fCOX3, D17_tGA3AHS)
-reg11 = stats.linregress(fCOX3, D17_tGA3AAS)
-reg12 = stats.linregress(fCOX3, D17_tGA3HAS)
-
-# fCOX for Young2014 and Wostbrock2020 given different tCOX and tPR
-fCOX3HHSYO = (-0.424 - reg9.intercept) / reg9.slope
-fCOX3HHSWB = (-0.441 - reg9.intercept) / reg9.slope
-fCOX3AHSYO = (-0.424 - reg10.intercept) / reg10.slope
-fCOX3AHSWB = (-0.441 - reg10.intercept) / reg10.slope
-fCOX3AASYO = (-0.424 - reg11.intercept) / reg11.slope
-fCOX3AASWB = (-0.441 - reg11.intercept) / reg11.slope
-fCOX3HASYO = (-0.424 - reg12.intercept) / reg12.slope
-fCOX3HASWB = (-0.441 - reg12.intercept) / reg12.slope
-
-print("fCOX for Young2014 for fMR = 0.3 given tCOXHelman and tPRHelman is " + str(fCOX3HHSYO) + ".")
-print("fPR for Young2014 for fMR = 0.3 given tCOXHelman and tPRHelman is " + str(0.7 - fCOX3HHSYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.3 given tCOXHelman and tPRHelman is " + str(fCOX3HHSWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.3 given tCOXHelman and tPRHelman is " + str(0.7 - fCOX3HHSWB) + ".")
-print("fCOX for Young2014 for fMR = 0.3 given tCOXAsh and tPRHelman is " + str(fCOX3AHSYO) + ".")
-print("fPR for Young2014 for fMR = 0.3 given tCOXAsh and tPRHelman is " + str(0.7 - fCOX3AHSYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.3 given tCOXAsh and tPRHelman is " + str(fCOX3AHSWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.3 given tCOXAsh and tPRHelman is " + str(0.7 - fCOX3AHSWB) + ".")
-print("fCOX for Young2014 for fMR = 0.3 given tCOXAsh and tPRAngert is " + str(fCOX3AASYO) + ".")
-print("fPR for Young2014 for fMR = 0.3 given tCOXAsh and tPRAngert is " + str(0.7 - fCOX3AASYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.3 given tCOXAsh and tPRAngert is " + str(fCOX3AASWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.3 given tCOXAsh and tPRAngert is " + str(0.7 - fCOX3AASWB) + ".")
-print("fCOX for Young2014 for fMR = 0.3 given tCOXHelman and tPRAngert is " + str(fCOX3HASYO) + ".")
-print("fPR for Young2014 for fMR = 0.3 given tCOXHelman and tPRAngert is " + str(0.7 - fCOX3HASYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.3 given tCOXHelman and tPRAngert is " + str(fCOX3HASWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.3 given tCOXHelman and tPRAngert is " + str(0.7 - fCOX3HASWB) + ".\n")
-
-
-# Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig3.plot(fCOX3, D17_tGA3HHS, label='$\Theta_{COX}$ = 0.516, $\Theta_{PR}$ = 0.512, $\Theta_{MR}$ = 0.497')
-fig3.plot(fCOX3, D17_tGA3AHS, label='$\Theta_{COX}$ = 0.520, $\Theta_{PR}$ = 0.512, $\Theta_{MR}$ = 0.497')
-fig3.plot(fCOX3, D17_tGA3AAS, label='$\Theta_{COX}$ = 0.520, $\Theta_{PR}$ = 0.506, $\Theta_{MR}$ = 0.497')
-fig3.plot(fCOX3, D17_tGA3HAS, label='$\Theta_{COX}$ = 0.516, $\Theta_{PR}$ = 0.506, $\Theta_{MR}$ = 0.497')
-
-# Plotting D17O2t of Young2014
-plt.hlines(-0.424, 0, 1, colors='black', linestyles='dashed',
-           label='$^{17}\Delta$ $O_2 $$_{trop, Young}$')
-
-# Plotting D17 of Wostbrock 2020
-plt.hlines(-0.441, 0, 1, colors='grey', linestyles='dashed',
-           label='$^{17}\Delta$ $O_2 $$_{trop, Wostbrock}$')
-
-# Title and x and y labels
-fig3.set_xlabel("$\Theta_{COX}$ Fraction")
-fig3.set_ylabel("$^{17}\Delta$ $O_2 $$_{trop}$ (‰)")
-fig3.set_title("$^{17}\Delta$ $O_2 $$_{trop}$ vs. $\Theta_{COX}$ Fraction for fMR = 0.3")
-
-# Legend
-fig3.legend(loc='best')
-plt.tight_layout()
-
-# Saving figure
-plt.savefig('D17O2tfCOXfPRfMR3.jpg', dpi=800)
-
-
-

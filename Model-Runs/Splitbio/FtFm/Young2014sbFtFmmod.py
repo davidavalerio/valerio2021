@@ -653,16 +653,15 @@ with sns.axes_style("whitegrid"):
 fig1.set(xlim = (0, 1), ylim = (-.5, -.35))
 
 # Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig1.plot(ftx, D17_ft, color = 'green')
+fig1.plot(ftx, D17_ft, color = 'blue')
 
-# Plotting D17 of base model
-plt.vlines(.6, -0.5, -.424, colors='blue', linestyles='dashed',
-           label = 'Base Model, ft = .6, D17_O2t = -.424')
-plt.hlines(-.424, 0, 0.6, colors='blue', linestyles='dashed')
+# Plotting ft from Field1998
+plt.vlines(0.6, -1, 0, color='green', linestyles='dotted',
+           label = 'Field1998, ft = 0.6')
 
 # Plotting D17 of Wostbrock 2020
 plt.vlines(.91, -0.5, -.441, colors='red', linestyles='dashed',
-           label = 'Wostbrock2020, ft = .91, D17_O2t = -.441')
+           label = 'Wostbrock2020, ft = .91, $^{17}\Delta$ $O_2 $$_{trop}$ = -.441')
 plt.hlines(-.441, 0, .91, colors='red', linestyles='dashed')
 
 # Legend and title

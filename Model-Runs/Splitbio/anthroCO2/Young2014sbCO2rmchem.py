@@ -6,14 +6,13 @@ Created on Mon Feb 15 10:21:22 2021
 @author: david
 """
 
-#%% Load packages
+#%% Load packages and determine the initial moles of relevant species
+
 import pandas as pd
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-#%% Determine the initial moles of relevant species
 
 # Terrestrial fraction of global primary production from Field 1998
 ft = .6
@@ -44,6 +43,12 @@ isok2 = pd.Series(np.array([1, 1, 2, 1, 3, 2, 1, 2, 2]),
 # Q represents 18O, X represents 17O
 rQ = 0.002044928
 rX = 0.000370894
+
+# SMOW
+# =============================================================================
+# rQ = 0.0020052
+# rX = 0.0003799
+# =============================================================================
 
 # Fractional abundance of 18O and 17O from isotope ratios
 def frac(R1, R2):
@@ -105,7 +110,7 @@ alphari = 1 / 1.0182 # isotopic fractionation due to respiration
 alphaCO2H2O = 1.0413 # from Beck et al. 2005
 
 # Updated fractionation factors
-tresp = 0.5142 # global average oxygen uptake theta consistent with Wostbrock2020
+tresp = 0.5149 # global average oxygen uptake theta consistent with Wostbrock2020
 tevap = 0.519 # evapotranspiration theta from Landais2006
 tphoto = 0.525 # photosynthetic theta from LuzBarkan2011
 isoevap = 1.006825 # isotopic enrichment of water from evapotranspiration from Young2014
@@ -121,7 +126,30 @@ airt = 1.8e20 # moles of air in the troposphere is about 1/10 that of the strato
 vs = 2.8e25 # volume of stratosphere
 vt = vs / 10 # volume of troposphere is 1/10 that of the stratosphere
 
+# Constants for calculating reaction rates
+secyear = 31556952 # number of seconds in a year
+avo = 6.0221409e23 # Avogadro's number
+
+# Molar masses of oxygen isotopes and carbon from PubChem
+mO = 15.994915 # molar mass of oxygen
+mX = 16.999131 # molar mass of oxygen-17
+mQ = 17.99916  # molar mass of oxygen-18
+mC = 12 # molar mass of carbon
+
+
 #%% Assign reaction rates  from initial spreadsheet
+
+# Equations used to calculate reaction rates
+
+# Reduced mass equation
+def rm(m1, m2):
+    rm = (m1 * m2) / (m1 + m2)
+    return rm
+
+# Convert reaction rate from units of cm^3/s to moles/yr
+def tomol(cm3s, v):
+    tomol = cm3s * secyear * (avo / v)
+    return tomol
 
 # Rate constants for transport between boxes
 # 1 - troposphere, 2 - biosphere/hydrosphere, 3 - geosphere, 4 - stratosphere
@@ -189,14 +217,65 @@ K44 = 6.979631e-11 # OQ + O -> O2 + Q mol/yr
 K45 = 1.381808e-10 # O2 + X -> OX + O mol/yr
 K46 = 7.013395e-11 # OX + O -> O2 + X mol/yr
 K47 = 3.022982e-05 # CO2 + O1D -> CO2 + O mol/yr
-K48 = 1.4484581e-05 * (2/3) # CO2 + Q1D -> CO2 + Q mol/yr
-K49 = 1.4484581e-05 * (4/3) # CO2 + Q1D -> COQ + O mol/yr
-K50 = 1.5026874e-05 * (4/3) # COQ + O1D -> CO2 + Q mol/yr
-K51 = 1.5026874e-05 * (2/3) # COQ + O1D -> COQ + O mol/yr
-K52 = 1.4783854e-05 * (2/3) # CO2 + X1D -> CO2 + X mol/yr
-K53 = 1.4783854e-05 * (4/3) # CO2 + X1D -> COX + O mol/yr
-K54 = 1.5069884e-05 * (4/3) # COX + O1D -> CO2 + X mol/yr
-K55 = 1.5069884e-05 * (2/3) # COX + O1D -> COX + O mol/yr
+K48 = 1.4484581e-05 # CO2 + Q1D -> CO2 + Q mol/yr
+K49 = 1.4484581e-05 # CO2 + Q1D -> COQ + O mol/yr
+K50 = 1.5026874e-05 # COQ + O1D -> CO2 + Q mol/yr
+K51 = 1.5026874e-05 # COQ + O1D -> COQ + O mol/yr
+K52 = 1.4783854e-05 # CO2 + X1D -> CO2 + X mol/yr
+K53 = 1.4783854e-05 # CO2 + X1D -> COX + O mol/yr
+K54 = 1.5069884e-05 # COX + O1D -> CO2 + X mol/yr
+K55 = 1.5069884e-05 # COX + O1D -> COX + O mol/yr
+
+#%% Calculate reaction rates
+
+# Calculate reaction rates (mol/yr) from reaction rates (cm3/s) stated in paper
+# =============================================================================
+# K19 = tomol(6.86e-15) # O3 + O -> O2 + O2 1/(yr mol)
+# K20 = K19 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O -> O2 + OQ 1/(yr mol)
+# K21 = K19 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mX, mO)) # OOX + O -> O2 + OX 1/(yr mol)
+# K22 = K19 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mQ)) # O3 + Q -> O2 + OQ 1/(yr mol)
+# K23 = K19 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mX)) # O3 + X -> O2 + OX 1/(yr mol)
+# K24 = tomol(1.2e-10) # O3 + O1D -> O2 + O2 1/(yr mol)
+# K25 = K24 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> O2 + OQ 1/(yr mol)
+# K26 = K24 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> O2 + OX 1/(yr mol)
+# K27 = K24 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> O2 + OQ 1/(yr mol)
+# K28 = K24 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> O2 + OX 1/(yr mol)
+# K29 = K24 # O3 + O1D -> O2 + O + O 1/(yr mol)
+# K30 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> O2 + O + Q 1/(yr mol)
+# K31 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> OQ + O + O 1/(yr mol)
+# K32 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> O2 + O + X 1/(yr mol)
+# K33 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> OX + O + O 1/(yr mol)
+# K34 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> O2 + O + Q 1/(yr mol)
+# K35 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> OQ + O + O 1/(yr mol)
+# K36 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> O2 + O + X 1/(yr mol)
+# K37 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> OX + O + O 1/(yr mol)
+# K38 = 1.4e-4 # O2 + O1D -> O2 + O mol/yr
+# K39 = K38 # O2 + Q1D -> O2 + Q mol/yr
+# K40 = 0 # O2 + Q1D -> OQ + O mol/yr
+# K41 = K38 # O2 + X1D -> O2 + X mol/yr
+# K42 = 0 # O2 + X1D -> OX + O mol/yr
+# K43 = tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(mO + mQ, mO)) # O2 + Q -> OQ + O 1/(yr mol)
+# K44 = .5 * tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(2 * mO, mQ)) # OQ + O -> O2 + Q 1/(yr mol)
+# K45 = tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(mO + mX, mO)) # O2 + X -> OX + O 1/(yr mol)
+# K46 = .5 * tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(2 * mO, mX)) # OX + O -> O2 + X 1/(yr mol)
+# K47 = tomol(4.46e-11) # CO2 + O1D -> CO2 + O 1/(yr mol)
+# K48 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+#                          rm((mC + 2 * mO), mQ)) # CO2 + Q1D -> CO2 + Q 1/(yr mol)
+# K49 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+#                          rm((mC + 2 * mO), mQ)) # CO2 + Q1D -> COQ + O 1/(yr mol)
+# K50 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+#                          rm((mC + mO + mQ), mO)) # COQ + O1D -> CO2 + Q 1/(yr mol)
+# K51 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+#                          rm((mC + mO + mQ), mO)) # COQ + O1D -> COQ + O 1/(yr mol)
+# K52 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+#                          rm((mC + 2 * mO), mX)) # CO2 + X1D -> CO2 + X 1/(yr mol)
+# K53 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+#                          rm((mC + 2 * mO), mX)) # CO2 + X1D -> COX + O 1/(yr mol)
+# K54 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+#                          rm((mC + mO + mX), mO)) # COX + O1D -> CO2 + X 1/(yr mol)
+# K55 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+#                          rm((mC + mO + mX), mO)) # COX + O1D -> COX + O 1/(yr mol)
+# =============================================================================
 
 # Hydrosphere rate constants (assuming infinite reservoir)
 kr9 = 0.000930443 # CO2 + H2Q -> COQ + H2O  mol/yr
