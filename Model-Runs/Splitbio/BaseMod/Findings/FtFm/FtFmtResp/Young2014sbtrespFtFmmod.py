@@ -681,24 +681,24 @@ plt.vlines(0.6, -1, 0, color='green', linestyles='dotted',
 
 # Plotting D17 of Wostbrock 2020
 plt.hlines(-.441, 0, 1, colors='grey', linestyles='dashed',
-           label = '$^{17}\Delta$ $O_2 $$_{trop, Wostbrock}$')
+           label = '$^{17}\Delta$ $O_{2, Wostbrock}$')
 
 # Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig1.plot(ftx, D17_ftx512, label='0.512 PR', color='blue',
+fig1.plot(ftx, D17_ftx512, label='$\Theta_{PR}$ = 0.512', color='blue',
+          linewidth='1.5')
+fig1.plot(ftx, D17_ftx5149, label='$\Theta_{GA}$ = 0.5149', color='red',
           linewidth='2')
-fig1.plot(ftx, D17_ftx5149, label='0.5149 GA', color='red',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx516, label='0.516 COX', color='green',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx520, label='0.520 COX', color='orange',
-          linewidth='2')
-fig1.plot(ftx, D17_ftx497, label='0.497 MR', color='black',
-          linewidth='2')
+fig1.plot(ftx, D17_ftx516, label='$\Theta_{COX}$ = 0.516', color='orange',
+          linewidth='1.5')
+fig1.plot(ftx, D17_ftx520, label='$\Theta_{COX}$ = 0.520', color='purple',
+          linewidth='1.5')
+fig1.plot(ftx, D17_ftx497, label='$\Theta_{MR}$ = 0.497', color='black',
+          linewidth='1.5')
 
 # Title and x and y labels
-fig1.set_xlabel("Terrestrial Biosphere Fraction")
-fig1.set_ylabel("$^{17}\Delta$ $O_2 $$_{trop}$ (‰)")
-fig1.set_title("$^{17}\Delta$ $O_2 $$_{trop}$ vs. Terrestrial Biosphere Fraction")
+fig1.set_xlabel("Terrestrial Biosphere Relative Contribution to GPP (fT)")
+fig1.set_ylabel("$^{17}\Delta$ $O_{2, trop}$ (‰)")
+fig1.set_title("$^{17}\Delta$ $O_{2, trop}$ vs. fT")
 
 # Legend
 fig1.legend(loc='best')

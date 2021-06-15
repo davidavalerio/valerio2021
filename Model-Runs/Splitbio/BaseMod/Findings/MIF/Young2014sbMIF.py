@@ -1,73 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jan 18 13:32:21 2021
+Created on Wed Mar 17 21:54:30 2021
 
 @author: david
 """
 
-#%% Load packages
+#%% Load packages and determine the initial moles of relevant species
+
 import pandas as pd
 import numpy as np
 from scipy.integrate import odeint
-from scipy import stats
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-#%% Calculate relative fractions of COX, PR, and MR to make global theta = 0.5142
-
-# COX and PR Thetas
-tCOX = np.array([0.516, 0.520]) # tCOX = 0.516 from Helman2005 and 0.520 from Ash2019
-tPR = np.array([0.512]) # tPR = 0.512 from Helman2005
-tMR = np.array([0.497]) # tMR = 0.497 for Synechocystis
-
-# tGA that reproduces Wostbrock2020 D17_O2t value
-tGA = 0.5142
-
-# MR relative fractions
-fMR = np.linspace(0.1, 0.3, 3)
-
-# COX and PR relative fractions given fMR
-
-# fMR = 0.1
-fCOX1 = np.linspace(0, .9, 10)
-fPR1 = fCOX1[::-1]
-
-# fMR = 0.2
-fCOX2 = np.linspace(0, .8, 10)
-fPR2 = fCOX2[::-1]
-
-# fMR = 0.3
-fCOX3 = np.linspace(0, .7, 10)
-fPR3 = fCOX3[::-1]
-
-#%% tGA as function of fCOX and fPR
-
-# tGA as function of fCOX for given fMR, tCOX, tPR, and tMR
-def tGAc(fCOX, fMR, tCOX, tPR, tMR):
-    tGAc = fCOX * tCOX + fCOX[::-1] * tPR + fMR * tMR
-    return tGAc;
-
-# tGA for variable fCOX with fMR = 0.1 and tCOXHelman, tPRHelman, and tMRSynech
-tGA1HHS = tGAc(fCOX1, fMR[0], tCOX[0], tPR[0], tMR[0])
-
-# tGA for variable fCOX with fMR = 0.1 with tCOXAsh, tPRHelman, and tMRSynech
-tGA1AHS = tGAc(fCOX1, fMR[0], tCOX[1], tPR[0], tMR[0])
-
-# tGAall
-tGAall = np.append(tGA1HHS, tGA1AHS)
-
-#%% D17O2t as function of fCOX, fPR, and fMR
-
-# Lists for outputs of for loop
+# Lists for output of for loop
 sol = []
 fracfluxsol = []
 
-for tGAi in tGAall:
-    
-    # Fraction of global primary productivity for ocean vs. land from Field 1998
+# KMIF values
+KMIFx = np.linspace(1, 1.1, 10)
+
+for KMIFi in KMIFx:
+
+    # Terrestrial fraction of global primary production from Field 1998
     ft = .6
-    
+        
     # Initial moles of combined isotopologues for relevant species
     Os0 = 1 # O strat – initial moles, any small value works
     O1Ds0 = 1 # O(1D) strat – initial moles, any small value works
@@ -90,28 +48,24 @@ for tGAi in tGAall:
                                         'CO2t','O2b', 'O2g']))
     
     # Mole fraction/isotopic ratio used in Young 2014 Fortran Code 
+    
     # Q represents 18O, X represents 17O
     rQ = 0.002044928
     rX = 0.000370894
     
-    # 18O/16O (rQ) and 17O/16O (rX) of VSMOW
-    rQSMOW = 0.0020052
-    rXSMOW = 0.0003799
-    
-    #18O/16O (rQ) and 17O/16O (rX) of leaf water relative to VSMOW
+    # SMOW
+    # =============================================================================
+    # rQ = 0.0020052
+    # rX = 0.0003799
+    # =============================================================================
     
     # Fractional abundance of 18O and 17O from isotope ratios
     def frac(R1, R2):
         rZ = R1 / (1 + R1 + R2)
         return rZ
     
-    # Fractional abundance of 18O and 17O from Young 2014 or VSMOW
-    fracQ = frac(rQSMOW, rXSMOW)
-    fracX = frac(rXSMOW, rQSMOW)
-    
     # Calculate 18O/16O and 17O/16O ratios for each species
     # Z is either 18O (Q) or 17O (X)
-    
     def xxZ(isok2, rZ):
         xxZ = (isok2 * rZ) / (isok2 * rQ + isok2 * rX + 1)
         return xxZ
@@ -141,24 +95,23 @@ for tGAi in tGAall:
     OXg0 = xxX[8] * O2g0 # OX geo - initial moles
     
     # Initial moles of common isotopologues (i.e. no Q or X)
-    Os0 = Os0 - Qs0 - Xs0
-    O1Ds0 = O1Ds0 - Q1Ds0 - X1Ds0
-    O2s0 = O2s0 - OQs0 - OXs0
-    CO2s0 = CO2s0 - COQs0 - COXs0
-    O3s0 = O3s0 - OOQs0 - OOXs0
-    O2t0 = O2t0 - OQt0 - OXt0
-    CO2t0 = CO2t0 - COQt0 - COXt0
-    O2b0 = O2b0 - OQb0 - OXb0
-    O2g0 = O2g0 - OQg0 - OXg0
+    Os0 = Os0 - Qs0 - Xs0 # O strat - initial moles
+    O1Ds0 = O1Ds0 - Q1Ds0 - X1Ds0 # O1D strat - initial moles
+    O2s0 = O2s0 - OQs0 - OXs0 # O2 strat - initial moles
+    CO2s0 = CO2s0 - COQs0 - COXs0 # CO2 strat - inital moles
+    O3s0 = O3s0 - OOQs0 - OOXs0 # O3 strat - initial moles
+    O2t0 = O2t0 - OQt0 - OXt0 # O2 strat - initial moles
+    CO2t0 = CO2t0 - COQt0 - COXt0 # CO2 strat - initial moles
+    O2b0 = O2b0 - OQb0 - OXb0 # O2 bio - initial moles
+    O2g0 = O2g0 - OQg0 - OXg0 # O2 geo - initial moles
     
     #%% Constants relevant to calculations
     
-    # Fractionation factors from Young 2014
-    tresp = tGAi # global average respiration theta
+    # Fractionation factors
     tequil = 0.528 # nominal TOI equilibration slope
-    tevap0 = 0.520 # original from Young2014
-    isowater = 1.00525 # original from Young 2014
-    alphari = 1 / 1.0182 # discrimination during respiration
+    tevap0 = 0.520 # original evapotranspiration theta from Young2014
+    isowater = 1.00525 # tuned photosynthesis source water composition from Young 2014
+    alphari = 1 / 1.0182 # isotopic fractionation due to respiration
     #alphar = 1 / isowater * alphari # Calculated base fractionation
     #alphar = 0.9770279689 # from Young 2014 Fortran code 
     #alphart = ft * alphar # original from Young2014
@@ -166,10 +119,11 @@ for tGAi in tGAall:
     alphaCO2H2O = 1.0413 # from Beck et al. 2005
     
     # Updated fractionation factors
+    tresp = 0.5149 # global average oxygen uptake theta consistent with Wostbrock2020
     tevap = 0.519 # evapotranspiration theta from Landais2006
-    tphoto = 0.525 # effective photosynthetic slope
-    isoevap = 1.006825 # isotopic enrichment in water from evapotranspiration
-    isophoto = 1.0029 # isotopic enrichment in O2 from photosynthesis 
+    tphoto = 0.525 # photosynthetic theta from LuzBarkan2011
+    isoevap = 1.006825 # isotopic enrichment of water from evapotranspiration from Young2014
+    isophoto = 1.0029 # isotopic enrichment of photosynthetic O2 from Eisenstadt 2011
     alphart = 1 / isoevap * alphari  # terrestrial respiration fractionation factor
     alpharm = 1 / isophoto * alphari # marine respiration fractionation factor
     
@@ -181,7 +135,29 @@ for tGAi in tGAall:
     vs = 2.8e25 # volume of stratosphere
     vt = vs / 10 # volume of troposphere is 1/10 that of the stratosphere
     
+    # Constants for calculating reaction rates
+    secyear = 31556952 # number of seconds in a year
+    avo = 6.0221409e23 # Avogadro's number
+    
+    # Molar masses of oxygen isotopes and carbon from PubChem
+    mO = 15.994915 # molar mass of oxygen
+    mX = 16.999131 # molar mass of oxygen-17
+    mQ = 17.99916  # molar mass of oxygen-18
+    mC = 12 # molar mass of carbon
+    
     #%% Assign reaction rates  from initial spreadsheet
+    
+    # Equations used to calculate reaction rates
+    
+    # Reduced mass equation
+    def rm(m1, m2):
+        rm = (m1 * m2) / (m1 + m2)
+        return rm
+    
+    # Convert reaction rate from units of cm^3/s to moles/yr
+    def tomol(cm3s):
+        tomol = cm3s * secyear * (avo / vs)
+        return tomol
     
     # Rate constants for transport between boxes
     # 1 - troposphere, 2 - biosphere/hydrosphere, 3 - geosphere, 4 - stratosphere
@@ -201,15 +177,15 @@ for tGAi in tGAall:
     k14 = 0.1 # trop-strat mixing rate constant yr^-1
     
     # Rate constants for all relevant reactions in mol/yr from initial spreadsheet
-    KMIF = 1.065 # MIF for O3 formation
+    KMIF = KMIFi # MIF for O3 formation
     K1 = 3e-5 # O2 + PHO -> O + O mol/yr
     K2 = K1 # OQ + PHO -> Q + O mol/yr
     K3 = K1 # OX + PHO -> X + O mol/yr
     K4 = 4.6548631e-10 # O2 + O -> O3 mol/yr
-    K5 = KMIF * 4.4787551e-10 # O2 + Q -> OOQ mol/yr
-    K6 = KMIF * 4.562281e-10 # O2 + X -> OOX mol/yr
-    K7 = KMIF * 4.6088952e-10 # OQ + O -> OOQ mol/yr
-    K8 = KMIF * 4.6311901e-10 # OX + O -> OOX mol/yr
+    K5 = KMIF * 4.6548631e-10 # O2 + Q -> OOQ mol/yr
+    K6 = KMIF * 4.6548631e-10 # O2 + X -> OOX mol/yr
+    K7 = KMIF * 4.6548631e-10 # OQ + O -> OOQ mol/yr
+    K8 = KMIF * 4.6548631e-10 # OX + O -> OOX mol/yr
     K9 = 1000 # O3 + PHO -> O2 + O mol/yr
     K10 = K9 * (1/3) # OOQ + PHO -> O2 + mol/yr
     K11 = K9 * (2/3) # OOQ + PHO -> OQ + O mol/yr
@@ -221,42 +197,94 @@ for tGAi in tGAall:
     K17 = K14 * (1/3) # OOX + PHO -> O2 + X1D mol/yr
     K18 = K14 * (2/3) # OOX + PHO -> OX + O1D mol/yr
     K19 = 4.6548631e-10 # O3 + O -> O2 + O2 mol/yr
-    K20 = 4.6314754e-10 # OOQ + O -> O2 + OQ mol/yr
-    K21 = 4.6429202e-10 # OOX + O -> O2 + OX mol/yr
-    K22 = 4.456252e-10 # O3 + Q -> O2 + OQ mol/yr
-    K23 = 4.5505751e-10 # O3 + X -> O2 + OX mol/yr
+    K20 = K19 # OOQ + O -> O2 + OQ mol/yr
+    K21 = K19 # OOX + O -> O2 + OX mol/yr
+    K22 = K19 # O3 + Q -> O2 + OQ mol/yr
+    K23 = K19 # O3 + X -> O2 + OX mol/yr
     K24 = 8.139058e-05 # O3 + O1D -> O2 + O2 mol/yr
-    K25 = 8.0981641e-05 # OOQ + O1D -> O2 + OQ mol/yr
-    K26 = 8.118176e-05 # OOX + O1D -> O2 + OX mol/yr
-    K27 = 7.7917851e-05 # O3 + Q1D -> O2 + OQ mol/yr
-    K28 = 7.95671e-05 # O3 + X1D -> O2 + OX mol/yr
-    K29 = 8.139058e-05 # O3 + O1D -> O2 + O + O mol/yr
-    K30 = 4.049082e-05 # OOQ + O1D -> O2 + O + Q mol/yr
-    K31 = 4.049082e-05 # OOQ + O1D -> OQ + O + O mol/yr
-    K32 = 4.059088e-05 # OOX + O1D -> O2 + O + X mol/yr
-    K33 = 4.059088e-05 # OOX + O1D -> OX + O + O mol/yr
-    K34 = 3.895893e-05 # O3 + Q1D -> O2 + O + Q mol/yr
-    K35 = 3.895893e-05 # O3 + Q1D -> OQ + O + O mol/yr
-    K36 = 3.978355e-05 # O3 + X1D -> O2 + O + X mol/yr
-    K37 = 3.978355e-05 # O3 + X1D -> OX + O + O mol/yr
+    K25 = K24  # OOQ + O1D -> O2 + OQ mol/yr
+    K26 = K24  # OOX + O1D -> O2 + OX mol/yr
+    K27 = K24  # O3 + Q1D -> O2 + OQ mol/yr
+    K28 = K24  # O3 + X1D -> O2 + OX mol/yr
+    K29 = K24  # O3 + O1D -> O2 + O + O mol/yr
+    K30 = K24 * (1/2) # OOQ + O1D -> O2 + O + Q mol/yr
+    K31 = K24 * (1/2) # OOQ + O1D -> OQ + O + O mol/yr
+    K32 = K24 * (1/2) # OOX + O1D -> O2 + O + X mol/yr
+    K33 = K24 * (1/2) # OOX + O1D -> OX + O + O mol/yr
+    K34 = K24 * (1/2) # O3 + Q1D -> O2 + O + Q mol/yr
+    K35 = K24 * (1/2) # O3 + Q1D -> OQ + O + O mol/yr
+    K36 = K24 * (1/2) # O3 + X1D -> O2 + O + X mol/yr
+    K37 = K24 * (1/2) # O3 + X1D -> OX + O + O mol/yr
     K38 = 1.4e-4 # O2 + O1D -> O2 + O mol/yr
     K39 = K38 # O2 + Q1D -> O2 + Q mol/yr
     K40 = 0 # O2 + Q1D -> OQ + O mol/yr
     K41 = K38 # O2 + X1D -> O2 + X mol/yr
     K42 = 0 # O2 + X1D -> OX + O mol/yr
-    K43 = 1.35651e-10 # O2 + Q -> OQ + O mol/yr
-    K44 = 6.979631e-11 # OQ + O -> O2 + Q mol/yr
-    K45 = 1.381808e-10 # O2 + X -> OX + O mol/yr
-    K46 = 7.013395e-11 # OX + O -> O2 + X mol/yr
+    K43 = 1.2e-10 # O2 + Q -> OQ + O mol/yr
+    K43m = K43 / np.sqrt(rm(2 * mO, mO) / rm(mO + mQ, mO))
+    K44 = K43 * (1/2) # OQ + O -> O2 + Q mol/yr
+    K45 = K43 # O2 + X -> OX + O mol/yr
+    K46 = K43 * (1/2) # OX + O -> O2 + X mol/yr
     K47 = 3.022982e-05 # CO2 + O1D -> CO2 + O mol/yr
-    K48 = 1.4484581e-05 # CO2 + Q1D -> CO2 + Q mol/yr
-    K49 = 1.4484581e-05 # CO2 + Q1D -> COQ + O mol/yr
-    K50 = 1.5026874e-05 # COQ + O1D -> CO2 + Q mol/yr
-    K51 = 1.5026874e-05 # COQ + O1D -> COQ + O mol/yr
-    K52 = 1.4783854e-05 # CO2 + X1D -> CO2 + X mol/yr
-    K53 = 1.4783854e-05 # CO2 + X1D -> COX + O mol/yr
-    K54 = 1.5069884e-05 # COX + O1D -> CO2 + X mol/yr
-    K55 = 1.5069884e-05 # COX + O1D -> COX + O mol/yr
+    K48 = K47 * (1/2) * (2/3) # CO2 + Q1D -> CO2 + Q mol/yr
+    K49 = K47 * (1/2) * (4/3) # CO2 + Q1D -> COQ + O mol/yr
+    K50 = K47 * (1/2) * (4/3) # COQ + O1D -> CO2 + Q mol/yr
+    K51 = K47 * (1/2) * (2/3) # COQ + O1D -> COQ + O mol/yr
+    K52 = K47 * (1/2) * (2/3) # CO2 + X1D -> CO2 + X mol/yr
+    K53 = K47 * (1/2) * (4/3) # CO2 + X1D -> COX + O mol/yr
+    K54 = K47 * (1/2) * (4/3) # COX + O1D -> CO2 + X mol/yr
+    K55 = K47 * (1/2) * (2/3) # COX + O1D -> COX + O mol/yr
+    
+    #%% Calculate reaction rates
+    
+    # Calculate reaction rates (mol/yr) from reaction rates (cm3/s) stated in paper
+    # =============================================================================
+    # K19 = tomol(6.86e-15) # O3 + O -> O2 + O2 1/(yr mol)
+    # K20 = K19 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O -> O2 + OQ 1/(yr mol)
+    # K21 = K19 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mX, mO)) # OOX + O -> O2 + OX 1/(yr mol)
+    # K22 = K19 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mQ)) # O3 + Q -> O2 + OQ 1/(yr mol)
+    # K23 = K19 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mX)) # O3 + X -> O2 + OX 1/(yr mol)
+    # K24 = tomol(1.2e-10) # O3 + O1D -> O2 + O2 1/(yr mol)
+    # K25 = K24 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> O2 + OQ 1/(yr mol)
+    # K26 = K24 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> O2 + OX 1/(yr mol)
+    # K27 = K24 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> O2 + OQ 1/(yr mol)
+    # K28 = K24 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> O2 + OX 1/(yr mol)
+    # K29 = K24 # O3 + O1D -> O2 + O + O 1/(yr mol)
+    # K30 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> O2 + O + Q 1/(yr mol)
+    # K31 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> OQ + O + O 1/(yr mol)
+    # K32 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> O2 + O + X 1/(yr mol)
+    # K33 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> OX + O + O 1/(yr mol)
+    # K34 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> O2 + O + Q 1/(yr mol)
+    # K35 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> OQ + O + O 1/(yr mol)
+    # K36 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> O2 + O + X 1/(yr mol)
+    # K37 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> OX + O + O 1/(yr mol)
+    # K38 = 1.4e-4 # O2 + O1D -> O2 + O mol/yr
+    # K39 = K38 # O2 + Q1D -> O2 + Q mol/yr
+    # K40 = 0 # O2 + Q1D -> OQ + O mol/yr
+    # K41 = K38 # O2 + X1D -> O2 + X mol/yr
+    # K42 = 0 # O2 + X1D -> OX + O mol/yr
+    # K43 = tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(mO + mQ, mO)) # O2 + Q -> OQ + O 1/(yr mol)
+    # K44 = .5 * tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(2 * mO, mQ)) # OQ + O -> O2 + Q 1/(yr mol)
+    # K45 = tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(mO + mX, mO)) # O2 + X -> OX + O 1/(yr mol)
+    # K46 = .5 * tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(2 * mO, mX)) # OX + O -> O2 + X 1/(yr mol)
+    # K47 = tomol(4.46e-11) # CO2 + O1D -> CO2 + O 1/(yr mol)
+    # K48 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+    #                          rm((mC + 2 * mO), mQ)) # CO2 + Q1D -> CO2 + Q 1/(yr mol)
+    # K49 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+    #                          rm((mC + 2 * mO), mQ)) # CO2 + Q1D -> COQ + O 1/(yr mol)
+    # K50 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+    #                          rm((mC + mO + mQ), mO)) # COQ + O1D -> CO2 + Q 1/(yr mol)
+    # K51 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+    #                          rm((mC + mO + mQ), mO)) # COQ + O1D -> COQ + O 1/(yr mol)
+    # K52 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+    #                          rm((mC + 2 * mO), mX)) # CO2 + X1D -> CO2 + X 1/(yr mol)
+    # K53 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+    #                          rm((mC + 2 * mO), mX)) # CO2 + X1D -> COX + O 1/(yr mol)
+    # K54 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+    #                          rm((mC + mO + mX), mO)) # COX + O1D -> CO2 + X 1/(yr mol)
+    # K55 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+    #                          rm((mC + mO + mX), mO)) # COX + O1D -> COX + O 1/(yr mol)
+    # =============================================================================
     
     # Hydrosphere rate constants (assuming infinite reservoir)
     kr9 = 0.000930443 # CO2 + H2Q -> COQ + H2O  mol/yr
@@ -265,21 +293,21 @@ for tGAi in tGAall:
     kr12 = 0.44544841 # COX + H2O -> CO2 + H2X mol/yr
     
     # Hydrosphere multipliers from original model
-    kr91 = kr9 / (alphaCO2H2O * isowater * rQSMOW)
-    kr111 = kr11 / (alphaCO2H2O ** tequil * isowater ** tevap0 * rXSMOW)
+    kr9x = kr9 / (alphaCO2H2O * isowater * rQ)
+    kr11x = kr11 / (alphaCO2H2O ** tequil * isowater ** tevap0 * rX)
     
-    # Splitbio hydrosphere rate constants from base model
-    kr10t = ft * kr10
-    kr10m = (1 - ft) * kr10
-    kr12t = ft * kr12
-    kr12m = (1 - ft) * kr12
+    # Splitbio hydrosphere rate constants for base model
+    kr10t = ft * kr10 # COQ + H2O -> CO2 + H2Q mol/yr terrestrial
+    kr10m = (1 - ft) * kr10 # COQ + H2O -> CO2 + H2Q mol/yr marine
+    kr12t = ft * kr12 # COX + H2O -> CO2 + H2X mol/yr terrestrial 
+    kr12m = (1 - ft) * kr12 # COX + H2O -> CO2 + H2X mol/yr marine
     
-    # Splitbio hydrosphere rate constants from updated model
-    kr9t = ft * kr91 * alphaCO2H2O * isoevap * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr terrestrial
-    kr9m = (1 - ft) * kr91 * alphaCO2H2O * isophoto * rQSMOW # CO2 + H2Q -> COQ + H2O mol/yr marine
-    kr11t = ft * kr111  * alphaCO2H2O ** tequil * isoevap ** tevap * rXSMOW
-    kr11m = (1 - ft) * kr111 * alphaCO2H2O ** tequil * isophoto ** tphoto * rXSMOW
-
+    # Splitbio hydrosphere rate constants for updated model
+    kr9t = ft * kr9x * alphaCO2H2O * isoevap * rQ # CO2 + H2Q -> COQ + H2O mol/yr terrestrial
+    kr9m = (1 - ft) * kr9x * alphaCO2H2O * isophoto * rQ # CO2 + H2Q -> COQ + H2O mol/yr marine
+    kr11t = ft * kr11x  * alphaCO2H2O ** tequil * isoevap ** tevap * rX # CO2 + H2X -> COX + H2O mol/yr terrestrial
+    kr11m = (1 - ft) * kr11x * alphaCO2H2O ** tequil * isophoto ** tphoto * rX # COX + H2O -> CO2 + H2X mol/yr marine
+    
     #%% Solve the system of differential equations
     
     # Function containing all the ODEs
@@ -522,8 +550,6 @@ for tGAi in tGAall:
                        'O2t', 'OQt', 'OXt', 'CO2t', 'COQt', 'COXt', 'O2b',
                        'OQb', 'OXb', 'O2g', 'OQg', 'OXg'])
     
-    
-    
     # Solve the DEs
     moles = odeint(f, y0, t, mxstep = 1000000)
         
@@ -671,78 +697,255 @@ for tGAi in tGAall:
     fracflux = pd.DataFrame(np.array([xO2, xCO2t, xCO2s, xO3s, xJ]),
                             index =fracfluxo)
     
-    # Add isotopes and fracflux outputs
+     # Add isotopes and fracflux outputs
     sol.append(isotopes)
     fracfluxsol.append(fracflux)
-    
+
 #%% Plots
 
-# Plotting D17O2t as a function of fCOX for given fMR and different tCOX and tPR
-
-# fMR = 0.1
+# D17O2t as function of KMIF
+D17O2t_KMIFx = []
+for i in sol:
+    D17O2t = i.loc['D17_O2t'].values
+    D17O2t_KMIFx.append(D17O2t)
+D17O2t_KMIFx = np.hstack(D17O2t_KMIFx)
 
 # Setting up figure parameters
-fig1= plt.figure(figsize = (5, 5))
+fig1 = plt.figure(figsize = (5, 5))
 with sns.axes_style("whitegrid"):
     fig1 = fig1.add_subplot(1, 1, 1)
-fig1.set(xlim = (0, 0.9), ylim = (-.7, -.3))
-#fig2.yaxis.set_ticks(np.arange(-.7, -.15, .05))
-#fig2.xaxis.set_ticks(np.arange(0, 1.1, .1))
+fig1.set(xlim = (1, 1.1), ylim = (-0.6, -0.2))
 
-# D17 for fMR = 0.1 and different tCOX and tPR
-D17_tGA1HHS = []
-for i in sol[0:10]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA1HHS.append(D17)
-D17_tGA1HHS = np.hstack(D17_tGA1HHS)
+# Plotting D17 of O2t as function of KMIF
+fig1.plot(KMIFx, D17O2t_KMIFx, color='blue')
 
-D17_tGA1AHS = []
-for i in sol[10:20]:
-    D17 = i.loc['D17_O2t'].values
-    D17_tGA1AHS.append(D17)
-D17_tGA1AHS = np.hstack(D17_tGA1AHS)
+# Plotting KMIF from Young2014
+plt.vlines(1.065, -1, -0.459, color='red', linestyles='dotted',
+           label = 'KMIF = 1.065, $^{17}\Delta$ $O_{2, trop}$ = -0.459‰')
+plt.hlines(-0.459, 0, 1.065, color='red', linestyles='dotted')
 
-# Fit linear regression to data
-reg1 = stats.linregress(fCOX1, D17_tGA1HHS)
-reg2 = stats.linregress(fCOX1, D17_tGA1AHS)
-
-# fCOX for Young2014 and Wostbrock2020 given different tCOX and tPR
-fCOX1HHSYO = (-0.424 - reg1.intercept) / reg1.slope
-fCOX1HHSWB = (-0.441 - reg1.intercept) / reg1.slope
-fCOX1AHSYO = (-0.424 - reg2.intercept) / reg2.slope
-fCOX1AHSWB = (-0.441 - reg2.intercept) / reg2.slope
-
-print("fCOX for Young2014 for fMR = 0.1 and given tCOXHelman and tPRHelman is " + str(fCOX1HHSYO) + ".")
-print("fPR for Young2014 for fMR = 0.1 and given tCOXHelman and tPRHelman is " + str(0.9 - fCOX1HHSYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.1 and given tCOXHelman and tPRHelman is " + str(fCOX1HHSWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.1 and given tCOXHelman and tPRHelman is " + str(0.9 - fCOX1HHSWB) + ".")
-print("fCOX for Young2014 for fMR = 0.1 and given tCOXAsh and tPRHelman is " + str(fCOX1AHSYO) + ".")
-print("fPR for Young2014 for fMR = 0.1 and given tCOXAsh and tPRHelman is " + str(0.9 - fCOX1AHSYO) + ".")
-print("fCOX for Wostbrock2020 for fMR = 0.1 and given tCOXAsh and tPRHelman is " + str(fCOX1AHSWB) + ".")
-print("fPR for Wostbrock2020 for fMR = 0.1 and given tCOXAsh and tPRHelman is " + str(0.9 - fCOX1AHSWB) + ".")
-
-# Plotting Blunier2012 fCOX
-plt.vlines(0.66, -1, 0, color='green', linestyles='dotted',
-           label = 'Angert2003, fCOX = 0.66')
-
-# Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig1.plot(fCOX1, D17_tGA1HHS, color='blue',
-          label='$\Theta_{COX}$ = 0.516, $\Theta_{PR}$ = 0.512, $\Theta_{MR}$ = 0.497')
-fig1.plot(fCOX1, D17_tGA1AHS, color='red',
-          label='$\Theta_{COX}$ = 0.520, $\Theta_{PR}$ = 0.512, $\Theta_{MR}$ = 0.497')
-
-# Plotting D17 of Wostbrock 2020
-plt.hlines(-0.441, 0, 1, colors='grey', linestyles='dashed',
-           label='$^{17}\Delta$ $O_2 $$_{trop, Wostbrock}$')
-
-# Title and x and y labels
-fig1.set_xlabel("COX Fraction")
-fig1.set_ylabel("$^{17}\Delta$ $O_2 $$_{trop}$ (‰)")
-fig1.set_title("$^{17}\Delta$ $O_2 $$_{trop}$ vs. COX Fraction (fCOX) for fMR = 0.1")
-
-# Legend
-fig1.legend(loc='best')
+# Legend and title
+fig1.set_xlabel("KMIF")
+fig1.set_ylabel("$^{17}\Delta$ $O_{2, trop}$ (‰)")
+fig1.set_title('$^{17}\Delta$ $O_{2, trop}$ vs. KMIF')
+fig1.legend(loc = 'best', fontsize = 'small')
 plt.tight_layout()
 
-# Saving figure
-plt.savefig('D17O2tfCOXfPRfMR1.jpg', dpi=800)
+# Saving plot
+plt.savefig('Young2014D17O2tMIF.png', dpi = 800)
+
+# d'18O O3 as function of KMIF
+d18O3s_KMIFx = []
+for i in sol:
+    d18O3s = i.loc['d18_O3s'].values
+    d18O3s_KMIFx.append(d18O3s)  
+    
+d18O3s_KMIFx = np.hstack(d18O3s_KMIFx)
+
+# Setting up figure parameters
+fig2 = plt.figure(figsize = (5, 5))
+with sns.axes_style("whitegrid"):
+    fig2 = fig2.add_subplot(1, 1, 1)
+fig2.set(xlim = (1, 1.1), ylim = (20, 120))
+
+# Plotting d18O3s as function of KMIF
+fig2.plot(KMIFx, d18O3s_KMIFx, color='blue')
+
+# Plotting KMIF from Young2014
+plt.vlines(1.065, 0, 86, color='red', linestyles='dotted',
+           label = "KMIF = 1.065, $\delta'^{18}$O O$_{3, strat}$ = 86‰")
+plt.hlines(86, 0, 1.065, color='red', linestyles='dotted')
+
+# Plotting target value from Young2014
+plt.hlines(94, 1, 1.1, color='green', linestyles='dashed',
+           label = "Target $\delta'^{18}$O O$_{3, strat}$ = 94 ± 13‰")
+
+# Legend and title
+fig2.set_xlabel("KMIF")
+fig2.set_ylabel("$\delta'^{18}$O O$_{3, strat}$ (‰)")
+fig2.set_title("$\delta'^{18}$O O$_{3, strat}$ vs. KMIF")
+fig2.legend(loc = 'best', fontsize = 'small')
+
+# Saving plot
+plt.savefig('Young2014d18O3sMIF.png', dpi = 800)
+plt.tight_layout()
+
+# d'17O O3 as function of KMIF
+d17O3s_KMIFx = []
+for i in sol:
+    d17O3s = i.loc['d17_O3s'].values
+    d17O3s_KMIFx.append(d17O3s)
+    
+d17O3s_KMIFx = np.hstack(d17O3s_KMIFx)
+
+# Setting up figure parameters
+fig3 = plt.figure(figsize = (5, 5))
+with sns.axes_style("whitegrid"):
+    fig3 = fig3.add_subplot(1, 1, 1)
+fig3.set(xlim = (1, 1.1), ylim = (10, 110))
+
+# Plotting d'17O O3 as function of KMIF
+fig3.plot(KMIFx, d17O3s_KMIFx, color='blue')
+
+# Plotting KMIF from Young2014
+plt.vlines(1.065, 0, 74.671, color='red', linestyles='dotted',
+           label = "KMIF = 1.065, $\delta'^{17}$O O$_{3, strat}$ = 74.671‰")
+plt.hlines(74.671, 0, 1.065, color='red', linestyles='dotted')
+
+# Plotting target value from Young2014
+plt.hlines(77, 1, 1.1, color='green', linestyles='dashed',
+           label = "Target $\delta'^{17}$O O$_{3, strat}$ = 77 ± 10‰")
+
+# Legend and title
+fig3.set_xlabel("KMIF")
+fig3.set_ylabel("$\delta'^{17}$O O$_{3, strat}$ (‰)")
+fig3.set_title("$\delta'^{17}$O O$_{3, strat}$ vs. KMIF")
+fig3.legend(loc = 'best', fontsize = 'small')
+plt.tight_layout()
+
+# Saving plot
+plt.savefig('Young2014d17O3sMIF.png', dpi = 800)
+
+# D17O3s as function of KMIF
+D17O3s_KMIFx = []
+for i in sol:
+    D17O3s = i.loc['D17_O3s'].values
+    D17O3s_KMIFx.append(D17O3s)
+    
+D17O3s_KMIFx = np.hstack(D17O3s_KMIFx)
+
+# Setting up figure parameters
+fig4 = plt.figure(figsize = (5, 5))
+with sns.axes_style("whitegrid"):
+    fig4 = fig4.add_subplot(1, 1, 1)
+fig4.set(xlim = (1, 1.1), ylim = (-10, 50))
+
+# Plotting D17O3s as a function of KMIF
+fig4.plot(KMIFx, D17O3s_KMIFx, color='blue')
+
+# Plotting KMIF from Young2014
+plt.vlines(1.065, -10, 29.262, color='red', linestyles='dotted',
+           label = "KMIF = 1.065, $\Delta'^{17}$O O$_{3, strat}$ = 29.262‰")
+plt.hlines(29.262, 0, 1.065, color='red', linestyles='dotted')
+
+# Plotting target value from Young2014
+plt.hlines(29, 1, 1.1, color='green', linestyles='dashed',
+           label = "Target $\Delta'^{17}$ O$_{3, strat}$ = 29 ± 4‰")
+
+# Legend and title
+fig4.set_xlabel("KMIF")
+fig4.set_ylabel("$^{17}\Delta$ O$_{3, strat}$ (‰)")
+fig4.set_title("$^{17}\Delta$ O$_{3, strat}$ vs. KMIF")
+fig4.legend(loc = 'best', fontsize = 'small')
+plt.tight_layout()
+
+# Saving plot
+plt.savefig('Young2014D17O3sMIF.png', dpi = 800)
+
+# d18O2t as function of KMIF
+d18O2t_KMIFx = []
+for i in sol:
+    d18O2t = i.loc['d18_O2t'].values
+    d18O2t_KMIFx.append(d18O2t)  
+    
+d18O2t_KMIFx = np.hstack(d18O2t_KMIFx)
+
+# Setting up figure parameters
+fig5 = plt.figure(figsize = (5, 5))
+with sns.axes_style("whitegrid"):
+    fig5 = fig5.add_subplot(1, 1, 1)
+fig5.set(xlim = (1, 1.1), ylim = (22.5, 23.5))
+
+# Plotting d18O3s as function of KMIF
+fig5.plot(KMIFx, d18O2t_KMIFx, color='blue')
+
+# Plotting KMIF from Young2014
+plt.vlines(1.065, 0, 23.033, color='red', linestyles='dotted',
+           label = "KMIF = 1.065, $\delta'^{18}$O O$_{2, trop}$ = 23.033‰")
+plt.hlines(23.033, 0, 1.065, color='red', linestyles='dotted')
+
+# Plotting target value from Young2014
+plt.hlines(23.2, 1, 1.1, color='green', linestyles='dashed',
+           label = "Target $\delta'^{18}$O O$_{2, trop}$ = 23.2‰")
+
+# Legend and title
+fig5.set_xlabel("KMIF")
+fig5.set_ylabel("$\delta'^{18}$O O$_{2, trop}$ (‰)")
+fig5.set_title("$\delta'^{18}$O O$_{2, trop}$ vs. KMIF")
+fig5.legend(loc = 'best', fontsize = 'small')
+plt.tight_layout()
+
+# Saving plot
+plt.savefig('Young2014d18O2tMIF.png', dpi = 800)
+
+# d18CO2t as function of KMIF
+d18CO2t_KMIFx = []
+for i in sol:
+    d18CO2t = i.loc['d18_CO2t'].values
+    d18CO2t_KMIFx.append(d18CO2t)  
+    
+d18CO2t_KMIFx = np.hstack(d18CO2t_KMIFx)
+
+# Setting up figure parameters
+fig6 = plt.figure(figsize = (5, 5))
+with sns.axes_style("whitegrid"):
+    fig6 = fig6.add_subplot(1, 1, 1)
+fig6.set(xlim = (1, 1.1), ylim = (39.5, 41.5))
+
+# Plotting d18CO2s as function of KMIF
+fig6.plot(KMIFx, d18CO2t_KMIFx, color='blue')
+
+# Plotting KMIF from Young2014
+plt.vlines(1.065, 0, 40.856, color='red', linestyles='dotted',
+           label = "KMIF = 1.065, $\delta'^{18}$O CO$_{2, trop}$ = 40.856‰")
+plt.hlines(40.856, 0, 1.065, color='red', linestyles='dotted')
+
+# Plotting target value from Young2014
+plt.hlines(40.2, 1, 1.1, color='green', linestyles='dashed',
+           label = "Target $\delta'^{18}$O CO$_{2, trop}$ = 40.2‰")
+
+# Legend and title
+fig6.set_xlabel("KMIF")
+fig6.set_ylabel("$\delta'^{18}$O CO$_{2, trop}$ (‰)")
+fig6.set_title("$\delta'^{18}$O CO$_{2, trop}$ vs. KMIF")
+fig6.legend(loc = 'best', fontsize = 'small')
+plt.tight_layout()
+
+# Saving plot
+plt.savefig('Young2014d18CO2tMIF.png', dpi = 800)
+
+# D17CO2s as function of KMIF
+D17CO2s_KMIFx = []
+for i in sol:
+    D17CO2s = i.loc['D17_CO2s'].values
+    D17CO2s_KMIFx.append(D17CO2s)
+    
+D17CO2s_KMIFx = np.hstack(D17CO2s_KMIFx)
+
+# Setting up figure parameters
+fig7 = plt.figure(figsize = (5, 5))
+with sns.axes_style("whitegrid"):
+    fig7 = fig7.add_subplot(1, 1, 1)
+fig7.set(xlim = (1, 1.1), ylim = (-0.5, 4))
+
+# Plotting D17O3s as a function of KMIF
+fig7.plot(KMIFx, D17CO2s_KMIFx, color='blue')
+
+# Plotting KMIF from Young2014
+plt.vlines(1.065, -1, 2.372, color='red', linestyles='dotted',
+           label = 'KMIF = 1.065, $^{17}\Delta$ $CO_{2, strat}$ = 2.372‰')
+plt.hlines(2.372, 0, 1.065, color='red', linestyles='dotted')
+
+# Plotting target value from Young2014
+plt.hlines(1.65, 1, 1.1, color='green', linestyles='dashed',
+           label = "Target $^{17}\Delta$ $CO_{2, strat}$ = 1.65‰")
+
+# Legend and title
+fig7.set_xlabel("KMIF")
+fig7.set_ylabel("$^{17}\Delta$ $CO_{2, strat}$ (‰)")
+fig7.set_title('$^{17}\Delta$ $CO_{2, strat}$ vs. KMIF')
+fig7.legend(loc = 'best', fontsize = 'small')
+plt.tight_layout()
+
+# Saving plot
+plt.savefig('Young2014D17CO2sMIF.png', dpi = 800)

@@ -37,22 +37,11 @@ isok2 = pd.Series(np.array([1, 1, 2, 1, 3, 2, 1, 2, 2]),
                   index = np.array(['Os', 'O1Ds', 'O2s', 'CO2s', 'O3s', 'O2t',
                                     'CO2t','O2b', 'O2g']))
 
-# Mole fraction/isotopic ratio used in Young 2014 Fortran Code 
+# Isotopic ratio used in Young 2014 Fortran code 
 
 # Q represents 18O, X represents 17O
 rQ = 0.002044928
 rX = 0.000370894
-
-# SMOW
-# =============================================================================
-# rQ = 0.0020052
-# rX = 0.0003799
-# =============================================================================
-
-# Fractional abundance of 18O and 17O from isotope ratios
-def frac(R1, R2):
-    rZ = R1 / (1 + R1 + R2)
-    return rZ
 
 # Calculate 18O/16O and 17O/16O ratios for each species
 # Z is either 18O (Q) or 17O (X)
@@ -102,10 +91,6 @@ tequil = 0.528 # nominal TOI equilibration slope
 tevap0 = 0.520 # original evapotranspiration theta from Young2014
 isowater = 1.00525 # tuned photosynthesis source water composition from Young 2014
 alphari = 1 / 1.0182 # isotopic fractionation due to respiration
-#alphar = 1 / isowater * alphari # Calculated base fractionation
-#alphar = 0.9770279689 # from Young 2014 Fortran code 
-#alphart = ft * alphar # original from Young2014
-#alpharm = (1 - ft) * alphar # original from Young2014
 alphaCO2H2O = 1.0413 # from Beck et al. 2005
 
 # Updated fractionation factors
@@ -123,36 +108,34 @@ airt = 1.8e20 # moles of air in the troposphere is about 1/10 that of the strato
 
 # Volume of stratosphere and troposphere in cm^3
 vs = 2.8e25 # volume of stratosphere
-vt = vs / 10 # volume of troposphere is 1/10 that of the stratosphere
+vt = vs * 10 # volume of troposphere is 1/10 that of the stratosphere
 
 # Constants for calculating reaction rates
-secyear = 31556952 # number of seconds in a year
+secyear = 31536000 # number of seconds in a year
 avo = 6.0221409e23 # Avogadro's number
-
-# Molar masses of oxygen isotopes and carbon from PubChem
-mO = 15.994915 # molar mass of oxygen
-mX = 16.999131 # molar mass of oxygen-17
-mQ = 17.99916  # molar mass of oxygen-18
-mC = 12 # molar mass of carbon
-
 
 #%% Assign reaction rates  from initial spreadsheet
 
 # Equations used to calculate reaction rates
 
-# Reduced mass equation
-def rm(m1, m2):
-    rm = (m1 * m2) / (m1 + m2)
-    return rm
-
-# Convert reaction rate from units of cm^3/s to moles/yr
+# Convert reaction rate from units of cm^3/s to 1 / (mol yr)
 def tomol(cm3s):
     tomol = cm3s * secyear * (avo / vs)
     return tomol
 
+# Low pressure limit rate constant calculation from JPL 19-5
+def lpk(ko298, T, n):
+    k = ko298 * (T / 298) ** (-1 * n)
+    return k;
+
+# Arrhenius rate constant expression from JPL 19-5
+def Arr(A, T, ER):
+    k = A * np.exp(-1 * ER * (1 / T))
+    return k;
+
 # Rate constants for transport between boxes
 # 1 - troposphere, 2 - biosphere/hydrosphere, 3 - geosphere, 4 - stratosphere
-# k12 means 1 (trop) -> 2 (bio/hydro) and similarly for others
+# k12 represents 1 (trop) -> 2 (bio/hydro). similar notation for others
 k12 = 0.0008 # respiration rate constant yr^-1
 k12t = ft * k12 # respiration rate constant from bio terrestrial yr^-1
 k12m = (1 - ft) * k12 # respiration rate constant from bio marine yr^-1
@@ -168,136 +151,185 @@ k41 = 1 # stat-trop mixing rate constant yr^-1
 k14 = 0.1 # trop-strat mixing rate constant yr^-1
 
 # Rate constants for all relevant reactions in mol/yr from initial spreadsheet
+KMIFo = 1.065 # MIF for O3 formation
+K1o = 3e-5 # O2 + PHO -> O + O mol/yr
+K2o = K1o # OQ + PHO -> Q + O mol/yr
+K3o = K1o # OX + PHO -> X + O mol/yr
+K4o = 7.0931893e-10 # O2 + O -> O3 mol/yr
+K5o = KMIFo * K4o # O2 + Q -> OOQ mol/yr
+K6o = KMIFo * K4o # O2 + X -> OOX mol/yr
+K7o = KMIFo * K4o # OQ + O -> OOQ mol/yr
+K8o = KMIFo * K4o # OX + O -> OOX mol/yr
+K9o = 10000 # O3 + PHO -> O2 + O mol/yr
+K10o = K9o * (1/3) # OOQ + PHO -> O2 + mol/yr
+K11o = K9o * (2/3) # OOQ + PHO -> OQ + O mol/yr
+K12o = K9o * (1/3) # OOX + PHO -> O2 + X mol/yr
+K13o = K9o * (2/3) # OOX + PHO -> OX + O mol/yr
+K14o = 15768 # O3 + PHO -> O2 + O1D mol/yr
+K15o = K14o * (1/3) # OOQ + PHO -> O2 + Q1D mol/yr
+K16o = K14o * (2/3) # OOQ + PHO -> OQ + O1D mol/yr
+K17o = K14o * (1/3) # OOX + PHO -> O2 + X1D mol/yr
+K18o = K14o * (2/3) # OOX + PHO -> OX + O1D mol/yr
+K19o = 4.6548631e-10 # O3 + O -> O2 + O2 mol/yr
+K20o = K19o # OOQ + O -> O2 + OQ mol/yr
+K21o = K19o # OOX + O -> O2 + OX mol/yr
+K22o = K19o # O3 + Q -> O2 + OQ mol/yr
+K23o = K19o # O3 + X -> O2 + OX mol/yr
+K24o = 8.139058e-05 # O3 + O1D -> O2 + O2 mol/yr
+K25o = K24o * (1/2)  # OOQ + O1D -> O2 + OQ mol/yr
+K26o = K24o * (1/2) # OOX + O1D -> O2 + OX mol/yr
+K27o = K24o * (1/2) # O3 + Q1D -> O2 + OQ mol/yr
+K28o = K24o * (1/2) # O3 + X1D -> O2 + OX mol/yr
+K29o = K24o * (1/2) # O3 + O1D -> O2 + O + O mol/yr
+K30o = K24o * (1/2) # OOQ + O1D -> O2 + O + Q mol/yr
+K31o = K24o * (1/2) # OOQ + O1D -> OQ + O + O mol/yr
+K32o = K24o * (1/2) # OOX + O1D -> O2 + O + X mol/yr
+K33o = K24o * (1/2) # OOX + O1D -> OX + O + O mol/yr
+K34o = K24o * (1/2) # O3 + Q1D -> O2 + O + Q mol/yr
+K35o = K24o * (1/2) # O3 + Q1D -> OQ + O + O mol/yr
+K36o = K24o * (1/2) # O3 + X1D -> O2 + O + X mol/yr
+K37o = K24o * (1/2) # O3 + X1D -> OX + O + O mol/yr
+K38o = 1.4e-4 # O2 + O1D -> O2 + O mol/yr
+K39o = K38o # O2 + Q1D -> O2 + Q mol/yr
+K40o = 0 # O2 + Q1D -> OQ + O mol/yr
+K41o = K38o # O2 + X1D -> O2 + X mol/yr
+K42o = 0 # O2 + X1D -> OX + O mol/yr
+K43o = 1.35651e-10 # O2 + Q -> OQ + O mol/yr
+K44o = K43o * (1/2) # OQ + O -> O2 + Q mol/yr
+K45o = K43o # O2 + X -> OX + O mol/yr
+K46o = K43o * (1/2) # OX + O -> O2 + X mol/yr
+K47o = 3.022982e-05 # CO2 + O1D -> CO2 + O mol/yr
+K48o = 1.4484581e-05 # CO2 + Q1D -> CO2 + Q mol/yr
+K49o = 1.4484581e-05 # CO2 + Q1D -> COQ + O mol/yr
+K50o = 1.5026874e-05 # COQ + O1D -> CO2 + Q mol/yr
+K51o = 1.5026874e-05 # COQ + O1D -> COQ + O mol/yr
+K52o = 1.4783854e-05 # CO2 + X1D -> CO2 + X mol/yr
+K53o = 1.4783854e-05 # CO2 + X1D -> COX + O mol/yr
+K54o = 1.5069884e-05 # COX + O1D -> CO2 + X mol/yr
+K55o = 1.5069884e-05 # COX + O1D -> COX + O mol/yr
+
+# Compiled original rate constants
+Kod = np.array([KMIFo, K1o, K2o, K3o, K4o, K5o, K6o, K7o, K8o, K9o, K10o,
+                K11o, K12o, K13o, K14o, K15o, K16o, K17o, K18o, K19o, K20o,
+                K21o, K22o, K23o, K24o, K25o, K26o, K27o, K28o, K29o, K30o,
+                K31o, K32o, K33o, K34o, K35o, K36o, K37o, K38o, K39o, K40o,
+                K41o, K42o, K43o, K44o, K45o, K46o, K47o, K48o, K49o, K50o,
+                K51o, K52o, K53o, K54o, K55o])
+Koi = np.array(['KMIFo', 'K1o', 'K2o', 'K3o', 'K4o', 'K5o', 'K6o', 'K7o',
+                'K8o', 'K9o', 'K10o', 'K11o', 'K12o', 'K13o', 'K14o', 'K15o',
+                'K16o', 'K17o', 'K18o', 'K19o', 'K20o', 'K21o', 'K22o',
+                'K23o', 'K24o', 'K25o', 'K26o', 'K27o', 'K28o', 'K29o',
+                'K30o', 'K31o', 'K32o', 'K33o', 'K34o', 'K35o', 'K36o',
+                'K37o', 'K38o', 'K39o', 'K40o', 'K41o', 'K42o', 'K43o',
+                'K44o', 'K45o', 'K46o', 'K47o', 'K48o', 'K49o', 'K50o',
+                'K51o', 'K52o', 'K53o', 'K54o', 'K55o'])
+Ko = pd.DataFrame(Kod, Koi)
+
+#%% Calculate reaction rates using JPL 19-5 data without reduced mass scaling
 KMIF = 1.065 # MIF for O3 formation
-K1 = 3e-5 # O2 + PHO -> O + O mol/yr
-K2 = K1 # OQ + PHO -> Q + O mol/yr
-K3 = K1 # OX + PHO -> X + O mol/yr
-K4 = 4.6548631e-10 # O2 + O -> O3 mol/yr
-K5 = KMIF * 4.6548631e-10 # O2 + Q -> OOQ mol/yr
-K6 = KMIF * 4.6548631e-10 # O2 + X -> OOX mol/yr
-K7 = KMIF * 4.6548631e-10 # OQ + O -> OOQ mol/yr
-K8 = KMIF * 4.6548631e-10 # OX + O -> OOX mol/yr
-K9 = 1000 # O3 + PHO -> O2 + O mol/yr
-K10 = K9 * (1/3) # OOQ + PHO -> O2 + mol/yr
-K11 = K9 * (2/3) # OOQ + PHO -> OQ + O mol/yr
-K12 = K9 * (1/3) # OOX + PHO -> O2 + X mol/yr
-K13 = K9 * (2/3) # OOX + PHO -> OX + O mol/yr
-K14 = 15768 # O3 + PHO -> O2 + O1D mol/yr
-K15 = K14 * (1/3) # OOQ + PHO -> O2 + Q1D mol/yr
-K16 = K14 * (2/3) # OOQ + PHO -> OQ + O1D mol/yr
-K17 = K14 * (1/3) # OOX + PHO -> O2 + X1D mol/yr
-K18 = K14 * (2/3) # OOX + PHO -> OX + O1D mol/yr
-K19 = 4.6548631e-10 # O3 + O -> O2 + O2 mol/yr
-K20 = K19 # OOQ + O -> O2 + OQ mol/yr
-K21 = K19 # OOX + O -> O2 + OX mol/yr
-K22 = K19 # O3 + Q -> O2 + OQ mol/yr
-K23 = K19 # O3 + X -> O2 + OX mol/yr
-K24 = 8.139058e-05 # O3 + O1D -> O2 + O2 mol/yr
-K25 = K24  # OOQ + O1D -> O2 + OQ mol/yr
-K26 = K24  # OOX + O1D -> O2 + OX mol/yr
-K27 = K24  # O3 + Q1D -> O2 + OQ mol/yr
-K28 = K24  # O3 + X1D -> O2 + OX mol/yr
-K29 = K24  # O3 + O1D -> O2 + O + O mol/yr
-K30 = K24 * (1/2) # OOQ + O1D -> O2 + O + Q mol/yr8
-K31 = K24 * (1/2) # OOQ + O1D -> OQ + O + O mol/yr
-K32 = K24 * (1/2) # OOX + O1D -> O2 + O + X mol/yr
-K33 = K24 * (1/2) # OOX + O1D -> OX + O + O mol/yr
-K34 = K24 * (1/2) # O3 + Q1D -> O2 + O + Q mol/yr
-K35 = K24 * (1/2) # O3 + Q1D -> OQ + O + O mol/yr
-K36 = K24 * (1/2) # O3 + X1D -> O2 + O + X mol/yr
-K37 = K24 * (1/2) # O3 + X1D -> OX + O + O mol/yr
-K38 = 1.4e-4 # O2 + O1D -> O2 + O mol/yr
-K39 = K38 # O2 + Q1D -> O2 + Q mol/yr
-K40 = 0 # O2 + Q1D -> OQ + O mol/yr
-K41 = K38 # O2 + X1D -> O2 + X mol/yr
-K42 = 0 # O2 + X1D -> OX + O mol/yr
-K43 = 1.2e-10 # O2 + Q -> OQ + O mol/yr
-K43m = K43 / np.sqrt(rm(2 * mO, mO) / rm(mO + mQ, mO))
-K44 = K43 * (1/2) # OQ + O -> O2 + Q mol/yr
-K45 = K43 # O2 + X -> OX + O mol/yr
-K46 = K43 * (1/2) # OX + O -> O2 + X mol/yr
-K47 = 3.022982e-05 # CO2 + O1D -> CO2 + O mol/yr
-K48 = K47 * (1/2) * (2/3) # CO2 + Q1D -> CO2 + Q mol/yr
-K49 = K47 * (1/2) * (4/3) # CO2 + Q1D -> COQ + O mol/yr
-K50 = K47 * (1/2) * (4/3) # COQ + O1D -> CO2 + Q mol/yr
-K51 = K47 * (1/2) * (2/3) # COQ + O1D -> COQ + O mol/yr
-K52 = K47 * (1/2) * (2/3) # CO2 + X1D -> CO2 + X mol/yr
-K53 = K47 * (1/2) * (4/3) # CO2 + X1D -> COX + O mol/yr
-K54 = K47 * (1/2) * (4/3) # COX + O1D -> CO2 + X mol/yr
-K55 = K47 * (1/2) * (2/3) # COX + O1D -> COX + O mol/yr
+K1 = 1.109e-12 * secyear # O2 + PHO -> O + O 1/(yr mol)
+K2 = K1 # OQ + PHO -> Q + O 1/(yr mol)
+K3 = K1 # OX + PHO -> X + O 1/(yr mol)
+k4i = (lpk(6.1e-34, 220, 2.4) * 8.3e17)
+K4 = tomol(k4i) # O2 + O -> O3 1/(yr mol)
+K5 = KMIF * K4 # O2 + Q -> OOQ 1/(yr mol)
+K6 = KMIF * K4 # O2 + X -> OOX 1/(yr mol)
+K7 = KMIF * K4 # OQ + O -> OOQ 1/(yr mol)
+K8 = KMIF * K4 # OX + O -> OOX 1/(yr mol)
+K9 = 2.96e-4 * secyear # O3 + PHO -> O2 + O 1/(yr mol)
+K10 = K9 * (1/3) # OOQ + PHO -> O2 + Q 1/(yr mol)
+K11 = K9 * (2/3) # OOQ + PHO -> OQ + O 1/(yr mol)
+K12 = K9 * (1/3) # OOX + PHO -> O2 + X 1/(yr mol)
+K13 = K9 * (2/3) # OOX + PHO -> OX + O 1/(yr mol)
+K14 = 5.01e-4 * secyear # O3 + PHO -> O2 + O1D 1/(yr mol)
+K15 = K14 * (1/3) # OOQ + PHO -> O2 + Q1D 1/(yr mol)
+K16 = K14 * (2/3) # OOQ + PHO -> OQ + O1D 1/(yr mol)
+K17 = K14 * (1/3) # OOX + PHO -> O2 + X1D 1/(yr mol)
+K18 = K14 * (2/3) # OOX + PHO -> OX + O1D 1/(yr mol)
+k19i = Arr(8e-12, 220, 2060)
+K19 = tomol(k19i) # O3 + O -> O2 + O2 mol/yr
+K20 = K19 # OOQ + O -> O2 + OQ 1/(yr mol)
+K21 = K19 # OOX + O -> O2 + OX 1/(yr mol)
+K22 = K19 # O3 + Q -> O2 + OQ 1/(yr mol)
+K23 = K19 # O3 + X -> O2 + OX 1/(yr mol)
+k24i = Arr(2.4e-10, 220, 0)
+K24 = tomol(k24i) * (1/2) # O3 + O1D -> O2 + O2 1/(yr mol)
+K25 = K24 * (1/2) # OOQ + O1D -> O2 + OQ 1/(yr mol)
+K26 = K24 * (1/2) # OOX + O1D -> O2 + OX 1/(yr mol)
+K27 = K24 * (1/2) # O3 + Q1D -> O2 + OQ 1/(yr mol)
+K28 = K24 * (1/2) # O3 + X1D -> O2 + OX 1/(yr mol)
+K29 = K24 * (1/2) # O3 + O1D -> O2 + O + O 1/(yr mol)
+K30 = K24 * (1/2) # OOQ + O1D -> O2 + O + Q 1/(yr mol)
+K31 = K24 * (1/2) # OOQ + O1D -> OQ + O + O 1/(yr mol)
+K32 = K24 * (1/2) # OOX + O1D -> O2 + O + X 1/(yr mol)
+K33 = K24 * (1/2) # OOX + O1D -> OX + O + O 1/(yr mol)
+K34 = K24 * (1/2) # O3 + Q1D -> O2 + O + Q 1/(yr mol)
+K35 = K24 * (1/2) # O3 + Q1D -> OQ + O + O 1/(yr mol)
+K36 = K24 * (1/2) # O3 + X1D -> O2 + O + X 1/(yr mol)
+K37 = K24 * (1/2) # O3 + X1D -> OX + O + O 1/(yr mol)
+k38i = Arr(3.3e-11, 220, -55)
+K38 = tomol(k38i) * ((0.78 + 0.21) / 0.21) # O2 + O1D -> O2 + O mol/yr
+K39 = K38 # O2 + Q1D -> O2 + Q 1/(yr mol)
+K40 = 0 # O2 + Q1D -> OQ + O 1/(yr mol)
+K41 = K38 # O2 + X1D -> O2 + X 1/(yr mol)
+K42 = 0 # O2 + X1D -> OX + O 1/(yr mol)
+K43 = tomol(2.7e-12 * (300/220) ** 0.9) # O2 + Q -> OQ + O 1/(yr mol)
+K44 = K43 * (1/2) # OQ + O -> O2 + Q 1/(yr mol)
+K45 = K43 # O2 + X -> OX + O 1/(yr mol)
+K46 = K43 * (1/2) # OX + O -> O2 + X 1/(yr mol)
+TNF = 1
+k47i = Arr(7.5e-11, 220, -115)
+K47 = tomol(k47i) * TNF # CO2 + O1D -> CO2 + O 1/(yr mol)
+K48 = K47 * (1/3) # CO2 + Q1D -> CO2 + Q 1/(yr mol)
+K49 = K47 * (2/3) # CO2 + Q1D -> COQ + O 1/(yr mol)
+K50 = K47 * (1/3) # COQ + O1D -> CO2 + Q 1/(yr mol)
+K51 = K47 * (2/3) # COQ + O1D -> COQ + O 1/(yr mol)
+K52 = K47 * (1/3) # CO2 + X1D -> CO2 + X 1/(yr mol)
+K53 = K47 * (2/3) # CO2 + X1D -> COX + O 1/(yr mol)
+K54 = K47 * (1/3) # COX + O1D -> CO2 + X 1/(yr mol)
+K55 = K47 * (2/3) # COX + O1D -> COX + O 1/(yr mol)
 
-#%% Calculate reaction rates
+# Compiled calculated reaction rates
+Kcd = np.array([KMIF, K1, K2, K3, K4, K5, K6, K7, K8, K9, K10,
+                K11, K12, K13, K14, K15, K16, K17, K18, K19, K20,
+                K21, K22, K23, K24, K25, K26, K27, K28, K29, K30,
+                K31, K32, K33, K34, K35, K36, K37, K38, K39, K40,
+                K41, K42, K43, K44, K45, K46, K47, K48, K49, K50,
+                K51, K52, K53, K54, K55])
+Ki = np.array(['KMIF', 'K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7',
+                'K8', 'K9', 'K10', 'K11', 'K12', 'K13', 'K14', 'K15',
+                'K16', 'K17', 'K18', 'K19', 'K20', 'K21', 'K22',
+                'K23', 'K24', 'K25', 'K26', 'K27', 'K28', 'K29',
+                'K30', 'K31', 'K32', 'K33', 'K34', 'K35', 'K36',
+                'K37', 'K38', 'K39', 'K40', 'K41', 'K42', 'K43',
+                'K44', 'K45', 'K46', 'K47', 'K48', 'K49', 'K50',
+                'K51', 'K52', 'K53', 'K54', 'K55'])
 
-# Calculate reaction rates (mol/yr) from reaction rates (cm3/s) stated in paper
-# =============================================================================
-# K19 = tomol(6.86e-15) # O3 + O -> O2 + O2 1/(yr mol)
-# K20 = K19 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O -> O2 + OQ 1/(yr mol)
-# K21 = K19 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mX, mO)) # OOX + O -> O2 + OX 1/(yr mol)
-# K22 = K19 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mQ)) # O3 + Q -> O2 + OQ 1/(yr mol)
-# K23 = K19 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mX)) # O3 + X -> O2 + OX 1/(yr mol)
-# K24 = tomol(1.2e-10) # O3 + O1D -> O2 + O2 1/(yr mol)
-# K25 = K24 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> O2 + OQ 1/(yr mol)
-# K26 = K24 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> O2 + OX 1/(yr mol)
-# K27 = K24 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> O2 + OQ 1/(yr mol)
-# K28 = K24 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> O2 + OX 1/(yr mol)
-# K29 = K24 # O3 + O1D -> O2 + O + O 1/(yr mol)
-# K30 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> O2 + O + Q 1/(yr mol)
-# K31 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> OQ + O + O 1/(yr mol)
-# K32 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> O2 + O + X 1/(yr mol)
-# K33 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> OX + O + O 1/(yr mol)
-# K34 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> O2 + O + Q 1/(yr mol)
-# K35 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> OQ + O + O 1/(yr mol)
-# K36 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> O2 + O + X 1/(yr mol)
-# K37 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> OX + O + O 1/(yr mol)
-# K38 = 1.4e-4 # O2 + O1D -> O2 + O mol/yr
-# K39 = K38 # O2 + Q1D -> O2 + Q mol/yr
-# K40 = 0 # O2 + Q1D -> OQ + O mol/yr
-# K41 = K38 # O2 + X1D -> O2 + X mol/yr
-# K42 = 0 # O2 + X1D -> OX + O mol/yr
-# K43 = tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(mO + mQ, mO)) # O2 + Q -> OQ + O 1/(yr mol)
-# K44 = .5 * tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(2 * mO, mQ)) # OQ + O -> O2 + Q 1/(yr mol)
-# K45 = tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(mO + mX, mO)) # O2 + X -> OX + O 1/(yr mol)
-# K46 = .5 * tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(2 * mO, mX)) # OX + O -> O2 + X 1/(yr mol)
-# K47 = tomol(4.46e-11) # CO2 + O1D -> CO2 + O 1/(yr mol)
-# K48 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
-#                          rm((mC + 2 * mO), mQ)) # CO2 + Q1D -> CO2 + Q 1/(yr mol)
-# K49 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
-#                          rm((mC + 2 * mO), mQ)) # CO2 + Q1D -> COQ + O 1/(yr mol)
-# K50 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
-#                          rm((mC + mO + mQ), mO)) # COQ + O1D -> CO2 + Q 1/(yr mol)
-# K51 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
-#                          rm((mC + mO + mQ), mO)) # COQ + O1D -> COQ + O 1/(yr mol)
-# K52 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
-#                          rm((mC + 2 * mO), mX)) # CO2 + X1D -> CO2 + X 1/(yr mol)
-# K53 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
-#                          rm((mC + 2 * mO), mX)) # CO2 + X1D -> COX + O 1/(yr mol)
-# K54 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
-#                          rm((mC + mO + mX), mO)) # COX + O1D -> CO2 + X 1/(yr mol)
-# K55 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
-#                          rm((mC + mO + mX), mO)) # COX + O1D -> COX + O 1/(yr mol)
-# =============================================================================
-
-# Hydrosphere rate constants (assuming infinite reservoir)
-kr9 = 0.000930443 # CO2 + H2Q -> COQ + H2O  mol/yr
-kr10 = 0.4370797 # COQ + H2O -> CO2 + H2Q mol/yr
-kr11 = 0.00016875677 # CO2 + H2X -> COX + H2O mol/yr
-kr12 = 0.44544841 # COX + H2O -> CO2 + H2X mol/yr
+# Original hydrosphere rate constants (assuming infinite reservoir)
+kr9o = 0.00213987 # CO2 + H2Q -> COQ + H2O  1/(yr mol)
+#kr9o = 0.000930443
+kr10o = 1 # COQ + H2O -> CO2 + H2Q 1/(yr mol)
+#kr10o = 0.4370797 
+kr11o = 0.00037989 # CO2 + H2X -> COX + H2O 1/(yr mol)
+#kr11o = 0.00016875677 
+kr12o = 1 # COX + H2O -> CO2 + H2X 1/(yr mol)
+#kr12o = 0.44544841
 
 # Hydrosphere multipliers from original model
-kr9x = kr9 / (alphaCO2H2O * isowater * rQ)
-kr11x = kr11 / (alphaCO2H2O ** tequil * isowater ** tevap0 * rX)
+kr9x = kr9o / (alphaCO2H2O * isowater * rQ)
+kr11x = kr11o / (alphaCO2H2O ** tequil * isowater ** tevap0 * rX)
 
 # Splitbio hydrosphere rate constants for base model
-kr10t = ft * kr10 # COQ + H2O -> CO2 + H2Q mol/yr terrestrial
-kr10m = (1 - ft) * kr10 # COQ + H2O -> CO2 + H2Q mol/yr marine
-kr12t = ft * kr12 # COX + H2O -> CO2 + H2X mol/yr terrestrial 
-kr12m = (1 - ft) * kr12 # COX + H2O -> CO2 + H2X mol/yr marine
+kr10t = ft * kr10o # COQ + H2O -> CO2 + H2Q 1/(yr mol) terrestrial
+kr10m = (1 - ft) * kr10o # COQ + H2O -> CO2 + H2Q 1/(yr mol) marine
+kr12t = ft * kr12o # COX + H2O -> CO2 + H2X 1/(yr mol) terrestrial 
+kr12m = (1 - ft) * kr12o # COX + H2O -> CO2 + H2X 1/(yr mol) marine
 
 # Splitbio hydrosphere rate constants for updated model
-kr9t = ft * kr9x * alphaCO2H2O * isoevap * rQ # CO2 + H2Q -> COQ + H2O mol/yr terrestrial
-kr9m = (1 - ft) * kr9x * alphaCO2H2O * isophoto * rQ # CO2 + H2Q -> COQ + H2O mol/yr marine
-kr11t = ft * kr11x  * alphaCO2H2O ** tequil * isoevap ** tevap * rX # CO2 + H2X -> COX + H2O mol/yr terrestrial
-kr11m = (1 - ft) * kr11x * alphaCO2H2O ** tequil * isophoto ** tphoto * rX # COX + H2O -> CO2 + H2X mol/yr marine
+kr9t = ft * kr9x * alphaCO2H2O * isoevap * rQ # CO2 + H2Q -> COQ + H2O 1/(yr mol) terrestrial
+kr9m = (1 - ft) * kr9x * alphaCO2H2O * isophoto * rQ # CO2 + H2Q -> COQ + H2O 1/(yr mol) marine
+kr11t = ft * kr11x  * alphaCO2H2O ** tequil * isoevap ** tevap * rX # CO2 + H2X -> COX + H2O 1/(yr mol) terrestrial
+kr11m = (1 - ft) * kr11x * alphaCO2H2O ** tequil * isophoto ** tphoto * rX # COX + H2O -> CO2 + H2X 1/(yr mol) marine
 
 #%% Solve the system of differential equations
 
@@ -737,6 +769,9 @@ fracflux.columns = ['Mole fraction/flux', 'Percent diff']
 
 #%% Plots
 
+print(isotopes)
+print(fracflux)
+
 print(str(D17_O2t))
 
 # Figure 1 from paper
@@ -772,15 +807,25 @@ fig1.plot(x1, highT, label = 'slope .528', zorder = 1)
 # Legend and title
 fig1.set_xlabel("$\delta'^{18}$O")
 fig1.set_ylabel("$\delta'^{17}$O")
-fig1.set_title('Young2014splitbiomod SS Solution')
+fig1.set_title('Young2014sbmod SS Solution')
 fig1.legend(loc = 'best', fontsize = 'small')
 
 # Saving plot
-plt.savefig('Young2014splitmodSS.png', dpi = 800)
+plt.savefig('Young2014sbmodSS.png', dpi = 800)
 
 #Export data as excel spreadsheet
-writer = pd.ExcelWriter('Young2014splitbiomodWBSSrmchem.xlsx', engine = 'xlsxwriter')
+writer = pd.ExcelWriter('Young2014sbmodWBSSrmchem2.xlsx', engine = 'xlsxwriter')
 moles.to_excel(writer, sheet_name = 'Moles')
 isotopes.to_excel(writer, sheet_name = 'Isotopes')
 fracflux.to_excel(writer, sheet_name = 'Mole fraction flux')
+writer.save()
+
+#%% Comparing rate constants
+K = pd.DataFrame(Kod, index=Ki).rename(columns={0:'Ko'})
+K['Kc'] = Kcd
+K['Percent diff'] = pdiff(Kcd, Kod)
+
+#Export data as excel spreadsheet
+writer = pd.ExcelWriter('Kcompare.xlsx', engine = 'xlsxwriter')
+K.to_excel(writer, sheet_name = 'K')
 writer.save()

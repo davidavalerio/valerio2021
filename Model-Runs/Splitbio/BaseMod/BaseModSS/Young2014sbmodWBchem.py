@@ -109,7 +109,7 @@ alphari = 1 / 1.0182 # isotopic fractionation due to respiration
 alphaCO2H2O = 1.0413 # from Beck et al. 2005
 
 # Updated fractionation factors
-tresp = 0.5142 # global average oxygen uptake theta consistent with Wostbrock2020
+tresp = 0.5149 # global average oxygen uptake theta consistent with Wostbrock2020
 tevap = 0.519 # evapotranspiration theta from Landais2006
 tphoto = 0.525 # photosynthetic theta from LuzBarkan2011
 isoevap = 1.006825 # isotopic enrichment of water from evapotranspiration from Young2014

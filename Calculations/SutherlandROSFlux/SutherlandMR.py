@@ -7,12 +7,6 @@ Created on Mon Feb 15 10:08:19 2021
 """
 
 import numpy as np
-import pandas as pd
-from uncertainties import ufloat
-from uncertainties.unumpy import uarray
-#from upandas import u_to_separate
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 #%% Global marine superoxide flux using Sutherland2020 data
 
