@@ -2,6 +2,8 @@
 """
 Created on Mon Aug 12 15:01:50 2019
 
+This file runs the Python implementation of Young et al. 2014's box model to simulate the change in isotopic compositions due to the anthropogenic rice in CO2 concentration.
+
 @author: dvale
 """
 
