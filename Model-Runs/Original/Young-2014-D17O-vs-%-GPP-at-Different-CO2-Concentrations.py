@@ -2,6 +2,8 @@
 """
 Created on Mon Aug 12 15:01:50 2019
 
+This model run produces a plot showing changes in the oxygen-triple isotope composition of oxygen in air as a function of the percent of modern primary productivity for different CO2 concentrations in the atmosphere.
+
 @author: dvale
 """
 
