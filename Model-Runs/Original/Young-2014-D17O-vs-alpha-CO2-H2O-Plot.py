@@ -2,6 +2,9 @@
 """
 Created on Mon Aug 12 15:01:50 2019
 
+This file uses the Young et al. 2014 Python implementation to produce a plot showing how the oxygen triple-isotope composition
+of oxygen in the troposphere responds to changes in the value of the fractionation factor between CO2 and H2O.
+
 @author: dvale
 """
 
