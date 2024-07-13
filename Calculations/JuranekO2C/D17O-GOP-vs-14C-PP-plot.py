@@ -3,6 +3,8 @@
 """
 Created on Fri Mar 12 09:51:31 2021
 
+This file plots estimates of gross oxygen production based on oxygen triple-isotope measurements of seawater against estimates of net carbon fixation based on C14 measurements. 
+
 @author: david
 """
 
@@ -13,33 +15,33 @@ from labellines import labelLine, labelLines
 
 #%% D17O GOP and 14C-PP data to plot 
 
-# LuzBarkan2009 BATS
+# Luz and Barkan 2009 BATS
 BATSGOP = np.average(np.array([37.1, 47.5, 76.2]))
 BATSC14 = np.average(np.array([8.6, 7.6, 9.9]))
 
-# Munro2012 CalCOFI
+# Munro et al. 2012 CalCOFI
 CalCOFIGOP = 235
 CalCOFIC14 = 529 * (1 / 1000) * (1/12) * 1000
 
-# Stanley2010 Central Equatorial Pacific (CEP)
+# Stanley et al. 2010 Central Equatorial Pacific (CEP)
 CEPGOP = 184
 CEPGOPC14 = 3.1
 CEPC14 = CEPGOP / CEPGOPC14
 
-# Stanley2010 Western Equatorial Pacific (WEP)
+# Stanley et al. 2010 Western Equatorial Pacific (WEP)
 WEPGOP = 121
 WEPGOPC14 = 8.2
 WEPC14 = WEPGOP / WEPGOPC14
 
-# Quay2010 HOT
+# Quay 2010 HOT
 HOTGOP = 103
 HOTC14 = 42
 
-# Hamme2012 Southern Ocean (Patch 1 + 2)
+# Hamme et al. 2012 Southern Ocean (Patch 1 + 2)
 SOGOP = np.average(np.array([144, 159]))
 SOC14 = np.average(np.array([39.1, 27]))
 
-#%% GOPC14 slopes to plot
+#%% GOP / C14 slopes to plot
 
 # JGOFS and Halsey2010 GOPC14 slopes
 Halsey2010 = 3.3
@@ -59,7 +61,7 @@ fig1.set_facecolor('#F7F7F7')
 
 #fig1.grid()
 
-# Plot GOPC14 slopes
+# Plot GOP / C14 slopes
 x = np.linspace(0, 100)
 
 fig1.plot(x, Halsey2010 * x, color='#a50026', label='Halsey2010', zorder=3.5)
@@ -112,7 +114,6 @@ fig1.set_ylabel('Mixed-layer $^{17}\Delta$-GOP (mmol O$_{2}$ m$^{-2}$ day$^{-2}$
 #labelLines(plt.gca().get_lines(), zorder=3.5, fontsize=8,
            #xvals=[78, 73, 80, 78])
 plt.tight_layout()
-
 
 # Saving figure
 plt.savefig('O2C.jpg', dpi=800)
