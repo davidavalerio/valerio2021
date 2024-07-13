@@ -3,6 +3,8 @@
 """
 Created on Tue May 18 15:58:04 2021
 
+This file defines functions for calculating the fractionaction between CO2 and H2O and HCO3- and H20 and plots them as a function of temperature. 
+
 @author: david
 """
 
@@ -48,7 +50,7 @@ fig1.legend(loc = 'best', fontsize = 'small')
 plt.savefig('aCO2H2O.png', dpi = 800)
 
 
-# aH3O3-H2O as a function of temperature
+# aHCO3-H2O as a function of temperature
 
 # Setting up figure parameters
 fig1 = plt.figure(figsize = (5, 5))
