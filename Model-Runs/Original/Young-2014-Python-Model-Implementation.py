@@ -2,31 +2,38 @@
 """
 Created on Mon Aug 12 15:01:50 2019
 
+This file contains the Python translation of Young et al. 2014's Fortan box model for the oxygen triple-isotope composition of the atmosphere
+
 @author: dvale
 """
 
 #%% Load packages and determine the initial moles of relevant species
+
 import pandas as pd
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
 import seaborn as sns
 
-# Determine initial moles of species tracked in the model
+# Determine initial moles of rare isotopologues in the model
 
 # Initial moles of all isotopologues in relavent species
 Os0 = 1 # O strat – initial moles, any small value works
 O1Ds0 = 1 # O(1D) strat – initial moles, any small value works
 O2s0 = 1 # O2 strat – initial moles, any small value works
-CO2s0 = 4.8e15 * (280/270)  # CO2 strat – initial moles, fixes mixing ratio of CO2
+CO2s0 = 4.8e15 # CO2 strat – initial moles, fixes mixing ratio of CO2
 O3s0 = 1 # O3 strat – initial moles, any small value works
 O2t0 = 1 # O2 trop – initial moles, any small value works
-CO2t0 = 4.8e16 * (280/270) # CO2 trop – intial moles, 400ppm = 7.2e16
+CO2t0 = 4.8e16 # CO2 trop – initial moles (270 ppm), 400ppm = 7.2e16
 O2b0 = 1.83e19 # O2 bio – from H2O initial moles, not used when H2O is infinite
 O2g0 = 2e17 # O2 geo – moles available for oxidation by O2 trop
 
-# Number of potentially rare oxygen isotopes in each species
+# Number of oxygens in given species
+isok1 = pd.Series(np.array([2, 1, 2, 1, 2, 2, 1, 2, 2]), 
+                  index = np.array(['Os', 'O1Ds', 'O2s', 'CO2s', 'O3s', 'O2t',
+                                    'CO2t','O2b', 'O2g']))
+
+# Multiplier atomic ratios to isotopologue ratios for given species
 isok2 = pd.Series(np.array([1, 1, 2, 1, 3, 2, 1, 2, 2]), 
                   index = np.array(['Os', 'O1Ds', 'O2s', 'CO2s', 'O3s', 'O2t',
                                     'CO2t','O2b', 'O2g']))
@@ -51,6 +58,7 @@ fracX = frac(rXSMOW, rQSMOW)
 
 # Calculate 18O/16O and 17O/16O ratios for each species
 # Z is either 18O (Q) or 17O (X)
+
 def xxZ(isok2, rZ):
     xxZ = (isok2 * rZ) / (isok2 * rQ + isok2 * rX + 1)
     return xxZ
@@ -93,8 +101,9 @@ O2g0 = O2g0 - OQg0 - OXg0
 #%% Constants relevant to calculations
 
 # Fractionation factors from Young 2014
-tresp = 0.5149   # global average respiration theta
+tresp = 0.520 # global average respiration theta
 twater = 0.528 # nominal TOI equilibration slope
+tevap = 0.520 # evapotranspiration slope
 isowater = 1.00525 # isotopic composition of water after evapotranspiration
 alphari = 1 / 1.0182 # discrimination during respiration
 #alphar = 0.9770279689 # from Young 2014 Fortran code 
@@ -108,6 +117,8 @@ airt = 1.8e20 # moles of air in the troposphere is about 1/10 that of the strato
 # Volume of stratosphere and troposphere in cm^3
 vs = 2.8e25 # volume of stratosphere
 vt = vs / 10 # volume of troposphere is 1/10 that of the stratosphere
+
+# Global fractions of terrestrial vs. marine photosynthesis
 
 # Constants for calculating reaction rates
 secyear = 31556952 # number of seconds in a year
@@ -195,6 +206,68 @@ kr9 = 0.000930443 # CO2 + H2Q -> COQ + H2O  mol/yr
 kr10 = 0.4370797 # COQ + H2O -> CO2 + H2Q mol/yr
 kr11 = 0.00016875677 # CO2 + H2X -> COX + H2O mol/yr
 kr12 = 0.44544841 # COX + H2O -> CO2 + H2X mol/yr
+
+#%% Calculate reaction rates
+
+# Equations used to calculate reaction rates
+
+# Reduced mass equation
+def rm(m1, m2):
+    rm = (m1 * m2) / (m1 + m2)
+    return rm
+
+# Convert reaction rate from units of cm^3/s to moles/yr
+def tomol(cm3s):
+    tomol = cm3s * secyear * (avo / vs)
+    return tomol
+
+# Calculate reaction rates (mol/yr) from reaction rates (cm3/s) stated in paper
+#K19 = tomol(6.86e-15) # O3 + O -> O2 + O2 1/(yr mol)
+#K20 = K19 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O -> O2 + OQ 1/(yr mol)
+#K21 = K19 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mX, mO)) # OOX + O -> O2 + OX 1/(yr mol)
+#K22 = K19 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mQ)) # O3 + Q -> O2 + OQ 1/(yr mol)
+#K23 = K19 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mX)) # O3 + X -> O2 + OX 1/(yr mol)
+#K24 = tomol(1.2e-10) # O3 + O1D -> O2 + O2 1/(yr mol)
+#K25 = K24 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> O2 + OQ 1/(yr mol)
+#K26 = K24 * np.sqrt(rm(3 * mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> O2 + OX 1/(yr mol)
+#K27 = K24 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> O2 + OQ 1/(yr mol)
+#K28 = K24 * np.sqrt(rm(3 * mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> O2 + OX 1/(yr mol)
+#K29 = K24 # O3 + O1D -> O2 + O + O 1/(yr mol)
+#K30 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> O2 + O + Q 1/(yr mol)
+#K31 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mQ, mO)) # OOQ + O1D -> OQ + O + O 1/(yr mol)
+#K32 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> O2 + O + X 1/(yr mol)
+#K33 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(2 * mO + mX, mO)) # OOX + O1D -> OX + O + O 1/(yr mol)
+#K34 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> O2 + O + Q 1/(yr mol)
+#K35 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mQ)) # O3 + Q1D -> OQ + O + O 1/(yr mol)
+#K36 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> O2 + O + X 1/(yr mol)
+#K37 = .5 * K24 * np.sqrt(rm(3 *mO, mO) / rm(3 * mO, mX)) # O3 + X1D -> OX + O + O 1/(yr mol)
+#K43 = tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(mO + mQ, mO)) # O2 + Q -> OQ + O 1/(yr mol)
+#K44 = .5 * tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(2 * mO, mQ)) # OQ + O -> O2 + Q 1/(yr mol)
+#K45 = tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(mO + mX, mO)) # O2 + X -> OX + O 1/(yr mol)
+#K46 = .5 * tomol(2e-16) * np.sqrt(rm(2 * mO, mO) / rm(2 * mO, mX)) # OX + O -> O2 + X 1/(yr mol)
+#K47 = tomol(4.46e-11) # CO2 + O1D -> CO2 + O 1/(yr mol)
+#K48 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+                         #rm((mC + 2 * mO), mQ)) # CO2 + Q1D -> CO2 + Q 1/(yr mol)
+#K49 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+                         #rm((mC + 2 * mO), mQ)) # CO2 + Q1D -> COQ + O 1/(yr mol)
+#K50 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+                         #rm((mC + mO + mQ), mO)) # COQ + O1D -> CO2 + Q 1/(yr mol)
+#K51 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+                         #rm((mC + mO + mQ), mO)) # COQ + O1D -> COQ + O 1/(yr mol)
+#K52 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+                         #rm((mC + 2 * mO), mX)) # CO2 + X1D -> CO2 + X 1/(yr mol)
+#K53 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+                         #rm((mC + 2 * mO), mX)) # CO2 + X1D -> COX + O 1/(yr mol)
+#K54 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+                         #rm((mC + mO + mX), mO)) # COX + O1D -> CO2 + X 1/(yr mol)
+#K55 = .5 * K47 * np.sqrt(rm((mC + 2 * mO), mO) /
+                         #rm((mC + mO + mX), mO)) # COX + O1D -> COX + O 1/(yr mol)
+                         
+# Calculate hydrosphere rate constants (mol/yr) from reaction rates (cm3/s) stated in paper
+kr91 = alphaCO2H2O * isowater * rQSMOW  # CO2 + H2Q -> COQ + H2O  mol/yr
+#kr10 = # COQ + H2O -> CO2 + H2Q mol/yr
+kr111 = alphaCO2H2O ** twater * isowater ** tevap * rXSMOW  # CO2 + H2X -> COX + H2O mol/yr
+#kr12 = # COX + H2O -> CO2 + H2X mol/yr
 
 #%% Solve the system of differential equations
 
@@ -382,7 +455,7 @@ def f(y, t):
     
     # Biosphere ODEs (equations not used because we assume an infinite reservoir)
     
-    # O2 Biosphere
+    # O2 BiosphereW
     # kO2bI = (k12 * O2ti)
     # kO2bO = (k21 + k23)
     # dO2b = kO2bI - O2bi *  kO2bO
@@ -422,48 +495,32 @@ def f(y, t):
                      dOXt, dCO2t, dCOQt, dCOXt, dO2b, dOQb, dOXb, dO2g,
                      dOQg, dOXg])
 
-# Initial conditions for pre-industrial CO2 levels
-y0pre = np.array([Os0, Xs0, O1Ds0, Qs0, X1Ds0, Q1Ds0, O2s0, OXs0, OQs0, CO2s0,
+# Initial conditions for solver
+y0 = np.array([Os0, Xs0, O1Ds0, Qs0, X1Ds0, Q1Ds0, O2s0, OXs0, OQs0, CO2s0,
                COXs0, COQs0, O3s0, OOXs0, OOQs0, O2t0, OQt0, OXt0, CO2t0,
                COQt0, COXt0, O2b0, OQb0, OXb0, O2g0, OQg0, OXg0])
 
-# Time grid to achieve steady state
-tpre = np.arange(0, 10e5, 0.1)
 
-# Order of species in molar outputsolver
+# Time grid
+t = np.arange(0, 10e5, 0.1)
+
+# Order of species in molar output
 moleso = np.array(['Os', 'Xs', 'O1Ds', 'Qs', 'X1Ds', 'Q1Ds', 'O2s', 'OXs',
                    'OQs', 'CO2s', 'COXs', 'COQs', 'O3s', 'OOXs', 'OOQs',
                    'O2t', 'OQt', 'OXt', 'CO2t', 'COQt', 'COXt', 'O2b', 'OQb',
                    'OXb', 'O2g', 'OQg', 'OXg'])
 
-# Solve the DEs for pre-industrial steady state
-molespre = odeint(f, y0pre, tpre, mxstep = 1000000)
 
-# Time post CO2 increase and pre CO2 increase to plot
-tpre = 100
-tpost = 250
 
-# Steady state pre CO2 increase
-molespret = molespre[-(tpre * 10 + 1):-1]
-
-# Final molar amounts of species from pre-anthropogenic steady state
-molespre = molespre[-1]
-
-# Initial conditions for evaluating affect of anthropogenic CO2 increase
-y0anthro = molespre
-y0anthro[9] = 7.3e15
-y0anthro[18] = 7.3e16
-
-# Time grid for evaluating affect of anthropogenic CO2 increase
-tanthro = np.arange(0, tpost, 0.1)
-
-# Solve the DEs for effect of anthropogenic CO2 increase
-molesanthro = odeint(f, y0anthro, tanthro, mxstep = 1000000)
-
+# Solve the DEs
+moles = odeint(f, y0, t, mxstep = 1000000)
+    
 # Set up output dataframe
-molespret = pd.DataFrame(molespret, columns = moleso, index = np.arange(0, tpre, 0.1))
-molesanthro = pd.DataFrame(molesanthro, columns = moleso, index = np.arange(0, tpost, 0.1))
-molesanthro = molespret.append(molesanthro)
+moles = pd.DataFrame(moles, columns = moleso)
+moles = pd.concat([moles.tail(1)]).reset_index(drop=True)
+moles = moles.transpose().reset_index(drop=True)
+moles['Index'] = moleso
+moles = moles.set_index('Index')
 
 #%% Isotopes output
 
@@ -484,24 +541,24 @@ def capD(deltaX, deltaQ):
     return capD
 
 # Calculate the 18O/16O and 17O/16O ratios of molecules at end of model run
-R18_Os = atomZ(isok2[0], molesanthro['Qs'], molesanthro['Os'])
-R17_Os = atomZ(isok2[0], molesanthro['Xs'], molesanthro['Os'])
-R18_O1Ds = atomZ(isok2[1], molesanthro['Q1Ds'], molesanthro['O1Ds'])
-R17_O1Ds = atomZ(isok2[1], molesanthro['X1Ds'], molesanthro['O1Ds'])
-R18_O2s = atomZ(isok2[2], molesanthro['OQs'], molesanthro['O2s'])
-R17_O2s = atomZ(isok2[2], molesanthro['OXs'], molesanthro['O2s'])
-R18_CO2s = atomZ(isok2[3], molesanthro['COQs'], molesanthro['CO2s'])
-R17_CO2s = atomZ(isok2[3], molesanthro['COXs'], molesanthro['CO2s'])
-R18_O3s = atomZ(isok2[4], molesanthro['OOQs'], molesanthro['O3s'])
-R17_O3s = atomZ(isok2[4], molesanthro['OOXs'], molesanthro['O3s'])
-R18_O2t = atomZ(isok2[5], molesanthro['OQt'], molesanthro['O2t'])
-R17_O2t = atomZ(isok2[5], molesanthro['OXt'], molesanthro['O2t'])
-R18_CO2t = atomZ(isok2[6], molesanthro['COQt'], molesanthro['CO2t'])
-R17_CO2t = atomZ(isok2[6], molesanthro['COXt'], molesanthro['CO2t'])
-R18_O2b = atomZ(isok2[7], molesanthro['OQb'], molesanthro['O2b'])
-R17_O2b = atomZ(isok2[7], molesanthro['OXb'], molesanthro['O2b'])
-R18_O2g = atomZ(isok2[8], molesanthro['OQg'], molesanthro['O2g'])
-R17_O2g = atomZ(isok2[8], molesanthro['OXg'], molesanthro['O2g'])
+R18_Os = atomZ(isok2[0], moles.loc['Qs'], moles.loc['Os'])
+R17_Os = atomZ(isok2[0], moles.loc['Xs'], moles.loc['Os'])
+R18_O1Ds = atomZ(isok2[1], moles.loc['Q1Ds'], moles.loc['O1Ds'])
+R17_O1Ds = atomZ(isok2[1], moles.loc['X1Ds'], moles.loc['O1Ds'])
+R18_O2s = atomZ(isok2[2], moles.loc['OQs'], moles.loc['O2s'])
+R17_O2s = atomZ(isok2[2], moles.loc['OXs'], moles.loc['O2s'])
+R18_CO2s = atomZ(isok2[3], moles.loc['COQs'], moles.loc['CO2s'])
+R17_CO2s = atomZ(isok2[3], moles.loc['COXs'], moles.loc['CO2s'])
+R18_O3s = atomZ(isok2[4], moles.loc['OOQs'], moles.loc['O3s'])
+R17_O3s = atomZ(isok2[4], moles.loc['OOXs'], moles.loc['O3s'])
+R18_O2t = atomZ(isok2[5], moles.loc['OQt'], moles.loc['O2t'])
+R17_O2t = atomZ(isok2[5], moles.loc['OXt'], moles.loc['O2t'])
+R18_CO2t = atomZ(isok2[6], moles.loc['COQt'], moles.loc['CO2t'])
+R17_CO2t = atomZ(isok2[6], moles.loc['COXt'], moles.loc['CO2t'])
+R18_O2b = atomZ(isok2[7], moles.loc['OQb'], moles.loc['O2b'])
+R17_O2b = atomZ(isok2[7], moles.loc['OXb'], moles.loc['O2b'])
+R18_O2g = atomZ(isok2[8], moles.loc['OQg'], moles.loc['O2g'])
+R17_O2g = atomZ(isok2[8], moles.loc['OXg'], moles.loc['O2g'])
 
 # Calculate the d17O and d18O of species.
 d18_Os = deltaZ(R18_Os, rQ)
@@ -565,16 +622,16 @@ def xJ(xCO2s, capDCO2s, airs, k41):
     return xJ
 
 # Calculate mole fraction of O2 in the troposphere
-xO2 = xO2(molesanthro['O2t'], molesanthro['OXt'], molesanthro['OQt'], airt)
+xO2 = xO2(moles.loc['O2t'], moles.loc['OXt'], moles.loc['OQt'], airt)
 
 # Calculate mole fraction of CO2 in the troposphere
-xCO2t = xCO2(molesanthro['CO2t'], molesanthro['COXt'], molesanthro['COQt'], airt)
+xCO2t = xCO2(moles.loc['CO2t'], moles.loc['COXt'], moles.loc['COQt'], airt)
 
 # Calculate mole fraction of CO2 in the stratosphere
-xCO2s = xCO2(molesanthro['CO2s'], molesanthro['COXs'], molesanthro['COQs'], airs)
+xCO2s = xCO2(moles.loc['CO2s'], moles.loc['COXs'], moles.loc['COQs'], airs)
 
 # Calculate mole fraction of O3 in the stratosphere
-xO3s = xO3(molesanthro['O3s'], molesanthro['OOXs'], molesanthro['OOQs'], airs)
+xO3s = xO3(moles.loc['O3s'], moles.loc['OOXs'], moles.loc['OOQs'], airs)
 
 # Calculate D17O flux
 xJ = xJ(xCO2s, D17_CO2s, airs, k41)
@@ -585,11 +642,11 @@ fracfluxo = np.array(['xO2', 'xCO2t', 'xCO2s', 'xO3s', 'xJ'])
 #%% Output dataframes to spreadsheet
 
 # Create empty dataframes for isotope and fraction/flux outputs
-isotopesanthro = pd.DataFrame(np.full((10 * tpost, 27), 0, dtype=float), columns = isotopeso)
-fracfluxanthro = pd.DataFrame(np.full((10 * tpost, 5), 0, dtype=float), columns = fracfluxo)
+isotopes = pd.DataFrame(np.full((1, 27), 0, dtype=float), columns = isotopeso)
+fracflux = pd.DataFrame(np.full((1, 5), 0, dtype=float), columns = fracfluxo)
 
 # Assign calculated isotope values to dataframe
-isotopesanthro = pd.DataFrame(np.array([d18_Os, d18_O1Ds, d18_O2s, d18_CO2s,
+isotopes = pd.DataFrame(np.array([d18_Os, d18_O1Ds, d18_O2s, d18_CO2s,
                                   d18_O3s, d18_O2t, d18_CO2t, d18_CO2t,
                                   d18_O2g, d17_Os, d17_O1Ds, d17_O2s,
                                   d17_CO2s, d17_O3s, d17_O2t, d17_CO2t,
@@ -599,63 +656,101 @@ isotopesanthro = pd.DataFrame(np.array([d18_Os, d18_O1Ds, d18_O2s, d18_CO2s,
                         index = isotopeso)
 
 # Assign calculated mole fraction and flux values to dataframe
-fracfluxanthro = pd.DataFrame(np.array([xO2, xCO2t, xCO2s, xO3s, xJ]),
+fracflux = pd.DataFrame(np.array([xO2, xCO2t, xCO2s, xO3s, xJ]),
                         index =fracfluxo)
+
+#%% Calculate difference between target SS solution and calculated values
+
+# Target mole values from Young 2014
+molest = pd.DataFrame(np.array([1.23e9, 4.68e5, 3.83e3, 2.64e6, 1.51, 8.40,
+                                3.8e18, 2.85e15, 1.59e16, 5.29e15, 2.01e12,
+                                1.13e13, 1.28e14, 1.53e11, 8.50e11, 3.8e19,
+                                1.59e17, 2.85e16, 5.29e16, 1.13e14, 2.00e13,
+                                np.nan, np.nan, np.nan, np.nan, np.nan,
+                                np.nan]), index = moleso)
+                
+# Target isotopic values from Young 2014
+isotopest = pd.DataFrame(np.array([51.869, 71.107, 23.212, 40.345, 76.268,
+                                  23.212, 40.688, np.nan, np.nan, 26.887,
+                                  64.599, 11.887, 22.915, 69.766, 11.887,
+                                  21.601, np.nan, np.nan, -.500, 27.054,
+                                  -.370, 1.613, 29.497, -.441, 0.118, np.nan,
+                                  np.nan]), index = isotopeso)
+
+# Target mole fraction and isotope flux values from Young 2014
+fracfluxt = pd.DataFrame(np.array([0.212, 2.944e-4, 2.944e-4, 7.184e-6,
+                                   8.55e15]), index = fracfluxo)
+
+# Percent difference between target moles and calculated moles
+def pdiff(m, t):
+    pdiff = ((m - t) / t) * 100
+    return pdiff
+
+perdmoles = pdiff(moles, molest)
+
+# Absolute and percent difference between target isotopic values and calculated isotopic values
+absdisotopes = isotopes - isotopest
+perdisotopes = pdiff(isotopes, isotopest)
+
+# Percent difference between target mole fraction/flux and calculated mole fraction/flux
+perdfracflux = pdiff(fracflux, fracfluxt)
+
+#%% Append difference between target SS and calculated to output sheets
+moles['Percent diff'] = perdmoles[0]
+moles.columns = ['Moles', 'Percent diff']
+isotopes['Abs diff'] = absdisotopes[0]
+isotopes['Percent diff'] = perdisotopes[0]
+isotopes.columns = ['Per mil', 'Abs diff', 'Percent diff']
+fracflux['Percent diff'] = perdfracflux[0]
+fracflux.columns = ['Mole fraction/flux', 'Percent diff']
+
+print(isotopes)
+print(fracflux)
 
 #%% Plots
 
-# Time grid to plot
-tplot = np.append(np.arange(-(tpre), 0, 0.1), np.arange(0, tpost, 0.1))
+# Figure 1 from paper
 
-# Setting up D17 O2t vs. time
+# Reference slope lines
+x1 = np.linspace(0, 100)
+pureMIF1 = (1 * x1 - 1 * isotopes['Per mil'].loc['d18_O2t'] +
+            isotopes['Per mil'].loc['d17_O2t'])
+highT = twater * x1
+
+# Setting up figure parameters
 fig1 = plt.figure(figsize = (5, 5))
 with sns.axes_style("whitegrid"):
     fig1 = fig1.add_subplot(1, 1, 1)
-fig1.set(xlim = (-(tpre), tpost), ylim = (-.45, -.42))
-fig1.yaxis.set_major_formatter(mtick.StrMethodFormatter("{x:.3f}"))
+fig1.set(xlim = (0, 100), ylim = (0, 100))
 
-# Plot D17 O2t vs. time
-plt.plot(tplot, D17_O2t, color='black')
-plt.xlabel("Time (years)")
-plt.ylabel("$^{17}\Delta$ O$_{2, trop}$")
-plt.title("$^{17}\Delta$ O$_{2, trop}$ 280 to 410 ppm")
-plt.tight_layout()
-plt.savefig("D17O2t280to410.jpg", dpi = 800)
+# Plotting steady state solutions
+fig1.plot(isotopes['Per mil'].loc['d18_O3s'], isotopes['Per mil'].loc['d17_O3s'],
+             label = 'O3 (strat)', marker = 'o', ms = 5, color = 'blue')
+fig1.plot(isotopes['Per mil'].loc['d18_O1Ds'], isotopes['Per mil'].loc['d17_O1Ds'],
+             label = 'O(1D) (strat)', marker = 's', ms = 5, color = 'blue')
+fig1.plot(isotopes['Per mil'].loc['d18_CO2s'], isotopes['Per mil'].loc['d17_CO2s'],
+             label = 'CO2 (strat)', marker = 'D', ms = 5, color = 'blue')
+fig1.plot(isotopes['Per mil'].loc['d18_CO2t'], isotopes['Per mil'].loc['d17_CO2t'],
+             label = 'CO2 (trop)', marker = 'D', ms = 5, color = 'red')
+fig1.plot(isotopes['Per mil'].loc['d18_O2t'], isotopes['Per mil'].loc['d17_O2t'],
+             label = 'O2 (trop)', marker = 'X', ms = 5, color = 'red')
 
-# Plot XCO2 O2t vs. time
-fig2 = plt.figure(figsize = (5, 5))
-with sns.axes_style("whitegrid"):
-    fig2 = fig2.add_subplot(1, 1, 1)
-fig2.set(xlim = (-(tpre), tpost), ylim = (0.0001, .0005))
-plt.plot(tplot, xCO2t, color='black')
-plt.xlabel("Time (years)")
-plt.ylabel("X(CO$_2$)$_{trop}$")
-plt.title("X(CO$_2$)$_{trop}$ 280 to 410 ppm")
-plt.tight_layout()
-plt.savefig("XCO2280to410.jpg", dpi = 800)
+# PLotting reference lines, label = "D17_O2t as function of t resp')
+fig1.plot(x1, pureMIF1, label = 'slope = 1', zorder = 1)
+fig1.plot(x1, highT, label = 'slope .528', zorder = 1)
 
-# Plot d18 O2t vs. time
-fig3 = plt.figure(figsize = (5, 5))
-with sns.axes_style("whitegrid"):
-    fig3 = fig3.add_subplot(1, 1, 1)
-fig3.set(xlim = (-(tpre), tpost), ylim = (23.28, 23.32))
-plt.plot(tplot, d18_O2t, color='black')
-plt.xlabel("Time (years)")
-plt.ylabel("$\delta^{18}$O$_{2, trop}$")
-plt.title("$\delta^{18}$O$_{2, trop}$ 280 to 410 ppm")
-plt.tight_layout()
-plt.savefig("d18O2t280to410.jpg", dpi = 800)
+# Legend and title
+fig1.set_xlabel("$\delta'^{18}$O")
+fig1.set_ylabel("$\delta'^{17}$O")
+fig1.set_title('Young2014orig SS Solution')
+fig1.legend(loc = 'best', fontsize = 'small')
 
-# Plot D17 Os vs. time
-fig4 = plt.figure(figsize = (5, 5))
-with sns.axes_style("whitegrid"):
-    fig4 = fig4.add_subplot(1, 1, 1)
-fig4.set(xlim = (-(tpre), tpost), ylim = (-0.62, -0.54))
-plt.plot(tplot, D17_Os, color='black')
-plt.xlabel("Time (years)")
-plt.ylabel("$^{17}\Delta$ O$_{strat}$")
-plt.title("$^{17}\Delta$ O$_{strat}$ 280 to 410 ppm")
-plt.tight_layout()
-plt.savefig("D17Os280to410.jpg", dpi = 800)
-    
+# Saving plot
+plt.savefig('Young2014origSS.png', dpi = 800)
 
+#Export data as excel spreadsheet
+writer = pd.ExcelWriter('Young2014origSS.xlsx', engine = 'xlsxwriter')
+moles.to_excel(writer, sheet_name = 'Moles')
+isotopes.to_excel(writer, sheet_name = 'Isotopes')
+fracflux.to_excel(writer, sheet_name = 'Mole fraction flux')
+writer.save()
