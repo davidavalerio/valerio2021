@@ -1,0 +1,5 @@
+This repository includes code for the calculations, models, and plots used in Valerio 2021 "Large contribution of light-dependent oxygen uptake to global O2 cycling".
+
+The Calculations folder contains includes Python files that calculate constants relevant for running the chemical reaction network box model described in the thesis.
+
+The Model-Runs folder contains two sub-folders, Original and Splitbio. The Original folder includes the direct Python translation of the Fortan box model used in Young et al. 2014 "On the Δ17O budget of atmospheric O2" and plots resulting from its use. The Splitbio folder includes the Python implementation of this box model that was used in Valerio 2021. The key difference between the two models is the Young et al. 2014 version combines the terrestrial and marine biosphere/hydrospheres into one box, while the Valerio 2021 version contains separate terrestrial and marine biosphere/hydrospheres.
