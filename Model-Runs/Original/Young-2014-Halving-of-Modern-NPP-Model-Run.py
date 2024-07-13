@@ -2,6 +2,8 @@
 """
 Created on Mon Aug 12 15:01:50 2019
 
+This file runs the model for a scenario where modern net primary productivity decreases by a factor of 2.
+
 @author: dvale
 """
 
