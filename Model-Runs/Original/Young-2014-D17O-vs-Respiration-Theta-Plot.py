@@ -2,6 +2,9 @@
 """
 Created on Mon Aug 12 15:01:50 2019
 
+This file uses the Young et al. 2014 Python implementation to produce a plot showing how the oxygen triple-isotope composition
+of tropospheric O2 responds to changes in the value of the average global theta value of different respiration pathways.
+
 @author: dvale
 """
 
