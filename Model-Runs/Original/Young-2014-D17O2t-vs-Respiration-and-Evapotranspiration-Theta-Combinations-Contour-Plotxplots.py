@@ -3,6 +3,9 @@
 """
 Created on Wed Aug 26 10:27:33 2020
 
+This file produces a contour plot of the oxygen triple-isotope compositions of tropospheric oxygen for different combinations of
+global average respiration and evapotranspiration theta values.
+
 @author: david
 """
 
