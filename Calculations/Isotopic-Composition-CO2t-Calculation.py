@@ -3,6 +3,9 @@
 """
 Created on Wed Apr 28 13:10:46 2021
 
+This file calculates the isotopic composition of CO2 in the stratosphere as well as the flux of CO2 from stratosphere to the
+troposphere.
+
 @author: david
 """
 
