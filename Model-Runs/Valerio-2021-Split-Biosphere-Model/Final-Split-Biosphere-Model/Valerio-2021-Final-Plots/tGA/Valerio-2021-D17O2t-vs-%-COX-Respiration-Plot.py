@@ -3,6 +3,9 @@
 """
 Created on Mon Jan 18 13:32:21 2021
 
+This file runs Valerio 2021's split biosphere box model to plot how the oxygen-triple isotope composition of the troposphere changes
+with varying percentages of global oxygen uptake coming from the COX and PR respiratory pathways. It is Figure 8 in Valerio 2021.
+
 @author: david
 """
 
@@ -717,4 +720,3 @@ fig1ax2.set_xlabel('$\Theta_{PR}$ Fraction of $\Theta_{\:O_2\:uptake}$ ($f_{PR}$
 # Saving figure
 plt.tight_layout()
 plt.savefig('D17O2tfCOXfPR.jpg', dpi=800)
-

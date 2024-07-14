@@ -3,6 +3,10 @@
 """
 Created on Mon Jan 18 13:32:21 2021
 
+This file runs Valerio 2021's split biosphere box model to plot how the oxygen-triple isotope composition of the troposphere changes
+with varying percentages of global oxygen uptake coming from Mehler-like reactions and the COX and PR respiratory pathways.
+It is Figure 8 in Valerio 2021.
+
 @author: david
 """
 
