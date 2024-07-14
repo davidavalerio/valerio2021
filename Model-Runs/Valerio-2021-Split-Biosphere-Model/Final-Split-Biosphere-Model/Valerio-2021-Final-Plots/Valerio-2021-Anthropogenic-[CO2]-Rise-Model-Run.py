@@ -3,6 +3,9 @@
 """
 Created on Mon Feb 15 10:21:22 2021
 
+This file runs Valerio 2021's split biosphere box model to simulate the changes in isotopic composition
+of oxygen in troposphere and stratosphere due to the anthropogenic rise in CO2 concentration.
+
 @author: david
 """
 
