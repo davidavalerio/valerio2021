@@ -4,7 +4,7 @@
 Created on Mon Feb  1 12:11:16 2021
 
 This file runs Valerio 2021's split biosphere box model to plot how the oxygen-triple isotope composition of the troposphere changes
-as a function of different values of the global average respiration theta.
+as a function of different contributions of Mehler-like reactions to global oxygen uptake. It is Figure 9 in Valerio 2021.
 
 @author: david
 """
