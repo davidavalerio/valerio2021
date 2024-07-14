@@ -3,6 +3,8 @@
 """
 Created on Tue Mar 16 15:25:42 2021
 
+This file calculates the isotopic composition of stratospheric CO2.
+
 @author: david
 """
 
