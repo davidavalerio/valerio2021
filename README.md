@@ -4,6 +4,6 @@ The Calculations folder contains includes Python files that calculate constants 
 
 The Model-Runs folder contains two sub-folders, Original and Splitbio.
 
-The Original folder includes the Python implemention of the Fortan box model used in [Young et al. 2014 "On the Δ17O budget of atmospheric O2"](https://www.sciencedirect.com/science/article/abs/pii/S0016703714001914) and plots resulting from its use. Results from this folder were not used in the thesis.
+The Young-2014-Python-Implementation folder includes the Python implemention of the Fortan box model used in [Young et al. 2014 "On the Δ17O budget of atmospheric O2"](https://www.sciencedirect.com/science/article/abs/pii/S0016703714001914) and plots resulting from its use. Results from this folder were not used in the thesis.
 
-The Splitbio folder includes the Python implementation of this model and plots resulting from its use that was used in Valerio 2021. The key difference between the two models is the Young et al. 2014 version combines the terrestrial and marine biosphere/hydrospheres into one box, while the separates the two.
+The Valerio-2021-Split-Biosphere-Model folder includes the Python implementation of this model and plots resulting from its use that was used in Valerio 2021. The key difference between the two models is the Young et al. 2014 version combines the terrestrial and marine biosphere/hydrospheres into one box, while the separates the two. Unfortunately, the code in these folders is not the most up-to-date compilation of that used in the thesis, it appears that I neglected to push my final versions to this repository and do not have access to it anymore...
