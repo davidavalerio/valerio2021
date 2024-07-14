@@ -2,8 +2,8 @@
 """
 Created on Mon Aug 12 15:01:50 2019
 
-This file runs Valerio 2021's split biosphere box model to plot how the oxygen-triple isotope composition of the troposphere changes
-with varying percentages of global primary production from the terrestrial and marine biospheres. It is Figure 6 in Valerio 2021.
+This file runs Valerio 2021's split biosphere box model to plot the model oxygen-triple isotope composition of the troposphere for
+different values of global average oxygen uptake theta and laboratory measurements. It is close to Figure 7 in Valerio 2021.
 
 @author: dvale
 """
@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+from scipy import stats
 from labellines import labelLine, labelLines
 
 #%% Setting up for loop for calculation
@@ -22,12 +23,14 @@ sol = []
 fracfluxsol = []
 
 # Fraction of global primary productivity for ocean vs. land from Field 1998
-ftx = np.linspace(0, 1, 10)
+xi = 0.470
+xf = 0.550
+tGA = np.linspace(xi, xf, 10)
 
-for fti in ftx:
+for tGAi in tGA:
     
    # Terrestrial fraction of global primary production from Field 1998
-    ft = fti
+    ft = 0.6
         
     # Initial moles of combined isotopologues for relevant species
     Os0 = 1 # O strat – initial moles, any small value works
@@ -97,7 +100,7 @@ for fti in ftx:
     # Updated fractionation factors
     alphaCO2H2O = 1.041 # 45 oC from Beck et al. 2005
     tequil = 0.528 # nominal TOI equilibration slope
-    tGA = 0.5189 # global average oxygen uptake theta from Young2014
+    tGA = tGAi # global average oxygen uptake theta from Young2014
     tevap = 0.5154 # evapotranspiration theta from Landais2006
     tphoto = 0.525 # photosynthetic theta from LuzBarkan2011
     isoevap = 1.005 # isotopic enrichment in water by evapotranspiration from West2008
@@ -642,58 +645,161 @@ for fti in ftx:
 
 #%% Plots
 
-# D17 as function of fraction terrestrial biosphere
-D17_ft = []
+# D17 as function of tGA
+D17_tGA= []
 for i in sol:
     D17 = i.loc['D17_O2t'].values
-    D17_ft.append(D17)
-D17_ft = np.hstack(D17_ft)
+    D17_tGA.append(D17)
+D17_tGA = np.hstack(D17_tGA)
 
 # Setting up figure parameters
 fig1 = plt.figure(figsize = (5, 5))
 fig1 = fig1.add_subplot(1, 1, 1)
-fig1.set(xlim = (0, 1), ylim = (-.6, -.25))
+yi = -0.9
+yf = -0.1
+fig1.set(xlim = (xi, xf), ylim = (yi, yf))
 fig1.set_facecolor('#F7F7F7')
 #fig1.grid()
 
-# Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig1.plot(ftx, D17_ft, color = '#364b9a',
-          label="$\Theta_{\:O_{2}\:uptake}=0.5189$", zorder=3.5)
-fig1.text(0.37, -0.343, '$\Theta_{\:O_{2}\:uptake}=0.5189$', color = '#364b9a', fontsize=8,
-          rotation=9)
+# Fit linear regression to data
+tGA = np.linspace(xi, xf, 10)
+reg = stats.linregress(tGA, D17_tGA)
+        
+# D17 O2t vs. theta respiration regression slope
+x1 = np.linspace(0, 100)
+D17_reg = reg.slope * tGA + reg.intercept
+
+# Helman2005 PR
+t512 = 0.512
+D17t512 = reg.slope * t512 + reg.intercept
+
+# Horizontal line
+x512h = np.linspace(xi, t512, 10)
+y512h = np.array([D17t512] * 10)
+fig1.plot(x512h, y512h, color='#228883', linestyle='solid',
+           label = "$\Theta_{PR}=0.512$", zorder=3.5)
+fig1.text(0.475, D17t512 + 0.015, '$\Theta_{PR}=0.512$', color = '#228883', fontsize=8)
+
+# =============================================================================
+# # Vertical line
+# x512v = np.array(([t512] * 10))
+# y512v = np.linspace(yi, D17t512, 10)
+# fig1.plot(x512v, y512v, color='#66ccee', linestyle='solid')
+# =============================================================================
+
+# Angert2003 AOX
+t514 = 0.514
+D17t514 = reg.slope * t514 + reg.intercept
+
+# Horizontal line
+x514h = np.linspace(xi, t514, 10)
+y514h = np.array([D17t514] * 10) 
+fig1.plot(x514h, y514h, color='#228883', linestyle='solid',
+           label = "$\Theta_{AOX}=0.514$", zorder=3.5)
+fig1.text(0.475, D17t514 + 0.015, '$\Theta_{AOX}=0.514$', color = '#228883', fontsize=8)
+
+# =============================================================================
+# # Vertical line
+# x514v = np.array([t514] * 10)
+# y514v = np.linspace(yi, D17t514, 10)
+# fig1.plot(x514v, y514v, color='#66ccee', linestyle='solid')
+# =============================================================================
+
+# Helman2005 COX
+t516 = 0.516
+D17t516 = reg.slope * t516 + reg.intercept
+
+# Horizontal line
+x516h = np.linspace(xi, t516, 10)
+y516h = np.array([D17t516] * 10)
+fig1.plot(x516h, y516h, color='#228883', linestyle='solid',
+           label = "$\Theta_{COX}=0.516$", zorder=3.5)
+fig1.text(0.475, D17t516 + 0.015, '$\Theta_{COX}=0.516$', color = '#228883', fontsize=8)
+
+# =============================================================================
+# # Vertical line
+# x516v = np.array([t516] * 10)
+# y516v = np.linspace(yi, D17t516, 10)
+# fig1.plot(x516v, y516v, color='#66ccee', linestyle='solid')
+# =============================================================================
+
+# Ash2020 COX
+t520 = 0.520
+D17t520 = reg.slope * t520 + reg.intercept
+
+# Horizontal line
+x520h = np.linspace(xi, t520, 10)
+y520h = np.array([D17t520] * 10)
+fig1.plot(x520h, y520h, color='#228883', linestyle='solid',
+           label="$\Theta_{COX}=0.520$", zorder=3.5)
+fig1.text(0.475, D17t520 + 0.015, '$\Theta_{COX}=0.520$', color = '#228883', fontsize=8)
+
+# =============================================================================
+# # Vertical line
+# x520v = np.array([t520] * 10)
+# y520v = np.linspace(yi, D17t520, 10)
+# fig1.plot(x520v, y520v, color='#66ccee', linestyle='solid')
+# =============================================================================
+
+# Helman2005 MRm
+t497 = 0.497
+D17t497 = reg.slope * t497 + reg.intercept
+
+# Horizontal line
+x497h = np.linspace(xi, t497, 10)
+y497h = np.array([D17t497] * 10)
+fig1.plot(x497h, y497h, color='#228883', linestyle='solid',
+           label = "$\Theta_{MRm}=0.497$", zorder=3.5)
+fig1.text(0.475, D17t497 + 0.015, '$\Theta_{MRm}=0.497$', color = '#228883', fontsize=8)
+
+# =============================================================================
+# # Vertical line
+# x497v = np.array([t497] * 10)
+# y497h = np.linspace(yi, D17t497, 10)
+# fig1.plot(x497h, y497h, color='#66ccee', linestyle='solid')
+# =============================================================================
+
+# Helman2005 MRt
+t526 = 0.526
+D17t526 = reg.slope * t526 + reg.intercept
+
+# Horizontal line
+x526h = np.linspace(xi, t526, 10)
+y526h = np.array([D17t526] * 10)
+fig1.plot(x526h, y526h, color='#228883', linestyle='solid',
+           label = "$\Theta_{MRt}=0.526$", zorder=3.5)
+fig1.text(0.475, D17t526 + 0.015, '$\Theta_{MRt}=0.526$', color = '#228883', fontsize=8)
+
+# =============================================================================
+# # Vertical line
+# x526v = np.array([t526] * 10)
+# y526v = np.linspace(yi, D17t526, 10)
+# fig1.plot(x526v, y526v, color='#66ccee', linestyle='solid')
+# =============================================================================
 
 # Plotting D17 of Wostbrock 2020
-x = np.arange(0, 1.1, 0.1)
+xWB = np.linspace(0.515, xf, 11)
 yWB = np.array([-0.441] * 11)
-fig1.plot(x, yWB, color='#77aadd', linestyle='dashed',
-           label="Wostbrock2020", zorder=3.5)
-fig1.text(0.4, -0.441 + 0.01, 'Wostbrock2020', color = '#77aadd', fontsize=8)
+fig1.plot(xWB, yWB, color='#77aadd', linestyle='solid',
+            label="Wostbrock2020", zorder=3.5)
+fig1.text(0.527, -0.441 + 0.015, 'Wostbrock2020', color = '#77aadd', fontsize=8)
 
 # Plotting D17 of LuzBarkan2011
+xLB = np.linspace(0.512, xf, 11)
 yLB = np.array([-0.507] * 11)
-fig1.plot(x, yLB, color='#ee8866', linestyle='dashed',
-           label="LuzBarkan2011", zorder=3.5)
-fig1.text(0.4, -0.507 + 0.01, 'LuzBarkan2011', color = '#ee8866', fontsize=8)
+fig1.plot(xLB, yLB, color='#ee8866', linestyle='solid',
+            label="LuzBarkan2011", zorder=3.5)
+fig1.text(0.527, -0.507 + 0.015, 'LuzBarkan2011', color = '#ee8866', fontsize=8)
 
-# Labels and legend
-fig1.set_xlabel("Terrestrial Fraction of GPP ($f_{T}$)")
+# Plotting D17 O2t as function of theta respiration
+plt.plot(tGA, D17_tGA, color='#4477aa', linewidth=2, zorder=4.5)
+
+# Legend and title
+fig1.set_xlabel("$\Theta_{\:O_{2}\:uptake}$")
 fig1.set_ylabel("$\Delta'^{17}O$ $O_{2, trop}$ (‰)")
-#labelLines(plt.gca().get_lines(), zorder=3.5)
-
-# Functions converting to marine fraction and back
-def terr2mar(x):
-    terr2mar = 1 - x
-    return terr2mar;
-
-def mar2terr(x):
-    mar2terr = 1 - x
-    return mar2terr;
-
-# Setting up second axis
-fig1ax2 = fig1.secondary_xaxis('top', functions=(terr2mar, mar2terr))
-fig1ax2.set_xlabel('Marine Fraction of GPP ($f_{M}$)')
+#labelLines(plt.gca().get_lines(), zorder=3.5, fontsize=8,
+           #xvals=([xi + 0.01] * 6 + [xf - 0.015] * 2))
 
 # Saving figure
 plt.tight_layout()
-plt.savefig('D17O2tvfTfM.jpg', dpi=800)
-
+plt.savefig('D17O2tvtGA2.jpg', dpi=800)

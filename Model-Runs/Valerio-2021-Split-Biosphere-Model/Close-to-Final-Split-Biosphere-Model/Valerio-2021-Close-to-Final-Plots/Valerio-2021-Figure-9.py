@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jan 18 13:32:21 2021
+Created on Mon Feb  1 12:11:16 2021
 
 This file runs Valerio 2021's split biosphere box model to plot how the oxygen-triple isotope composition of the troposphere changes
-with varying percentages of global oxygen uptake coming from the COX and PR respiratory pathways. It is Figure 8 in Valerio 2021.
+as a function of different contributions of Mehler-like reactions to global oxygen uptake. It is close to Figure 9 in Valerio 2021.
 
 @author: david
 """
@@ -14,43 +14,222 @@ import pandas as pd
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
-#%% Calculate relative fractions of COX and PR to make global theta = 0.5142
+#%% Terrestrial biosphere
 
-# COX and PR Thetas
-tCOX = np.array([0.516, 0.520]) # tCOX = 0.516 from Helman2005 and 0.520 from Ash2019
-tPR = np.array([0.512]) # tPR = 0.506 from Angert2003 and 0.512 from Helman2005
+# Carbon flux from terrestrial biosphere
+FCt = 9.4e15 # mol C / yr from Zhang1996
 
-# tGA that reproduces Wostbrock2020 D17_O2t value
-tGA = 0.5142
+# Relative fraction of terrestrial productivity for C3 and C4 plants
+fC3 = 0.725 # fraction from Francois1998
+fC4 = 0.275 # fraction from Francois1998
 
-# COX and PR relative fractions
-fCOX = np.linspace(0, 1, 10)
-fPR = 1 - fCOX
+# Photosynthetic quotient
+pQ = 1.07 # mol O2 / mol C from Keeling 1988
 
-#%% tGA as function of fCOX and fPR
+# Percentage of O2 production taken by Mehler reaction in terrestrial biosphere
+fMRt = 0.1 # from Badger2000 
 
-# tGA as function of fCOX for given tCOX and tPR
-def tGAc(fCOX, tCOX, tPR):
-    tGAc = fCOX * tCOX + (1 - fCOX) * tPR
-    return tGAc;
+# AOX relative to COX
+fAOXCOX = 0.1 # from Angert2003
 
-# tGA for variable fCOX with tCOXHelman and tPRHelman
-tGAHH = tGAc(fCOX, tCOX[0], tPR[0])
+# C4 O2 production
+FO2C4t = FCt * pQ * fC4
 
-# tGA for variable fCOX with tCOXAsh and tPRHelman
-tGAAH = tGAc(fCOX, tCOX[1], tPR[0])
+# O2 production in C4 plants taken by Mehler reaction
+FO2C4MRt = FO2C4t * (1 / (1 - fMRt)) - FO2C4t
 
-# tGAHH -> tGAHA
-tGAall = np.append(tGAHH, tGAAH)
+# (dark respiration + photorespiration) / (dark respiration)
+def DRPR(CO2, pipa, T):
+    DRPR = (4.5 / 4) * (CO2 * pipa + (7 / 3) * T) / (CO2 * pipa - T)
+    return DRPR;
 
-#%% D17O2t as function of fCOX and fPR
+# Parameters for DRPR
+CO2 = 281 # pre-industrial ppm CO2 in the atmosphere
+pipa = 0.65 # ratio of partial pressure CO2 in leaf vs. atmosphere
+T = 34 # CO2 compensation point at 28 oC
+
+DRPR = DRPR(CO2, pipa, T)
+
+# O2 production in C3 plants taken by photorespiration
+FO2C3t = FCt * pQ * fC3 * DRPR
+
+# O2 production in C3 plants taken by Mehler reaction
+FO2C3MRt = FO2C3t * (1 / (1 - fMRt)) - FO2C3t
+
+# O2 production in terrestrial biosphere taken by Mehler reaction
+FO2MRt = FO2C4MRt + FO2C3MRt
+
+# O2 production in terrestrial biosphere taken by photorespiration
+FO2PRt = FO2C3t - (FO2C3t / DRPR)
+
+# Total terrestial biosphere O2 production
+FO2t = FO2C4t + FO2C3t + FO2MRt
+
+#%% Marine biosphere
+
+# Carbon flux from marine biosphere
+FCm = 4.04e15 # mol C / yr from Field1998
+
+# Ratio of 14C production to gross O2 production
+C14O2 = 0.37 # from Blunier 2002
+
+# Percentage of O2 production taken by Mehler reaciton in marine biosphere
+fMRm = np.array([0, 0.1, 0.2, 0.3, 0.4, 0.5]) # from Badger2000
+
+# Marine biosphere production w/o MR
+FO2m = FCm * (1 / C14O2)
+
+# O2 production in marine biosphere taken by Mehler reaction
+FO2MRm0 = FO2m * (1 / (1 - fMRm[0])) - FO2m 
+FO2MRm1 = FO2m * (1 / (1 - fMRm[1])) - FO2m 
+FO2MRm2 = FO2m * (1 / (1 - fMRm[2])) - FO2m 
+FO2MRm3 = FO2m * (1 / (1 - fMRm[3])) - FO2m
+FO2MRm4 = FO2m * (1 / (1 - fMRm[4])) - FO2m
+FO2MRm5 = FO2m * (1 / (1 - fMRm[5])) - FO2m
+
+# Total marine biosphere O2 production
+FO2m0 = FO2m + FO2MRm0
+FO2m1 = FO2m + FO2MRm1
+FO2m2 = FO2m + FO2MRm2
+FO2m3 = FO2m + FO2MRm3
+FO2m4 = FO2m + FO2MRm4
+FO2m5 = FO2m + FO2MRm5
+
+#%% Global biosphere
+
+# Total global biosphere O2 production
+FO2g0 = FO2t + FO2m0
+FO2g1 = FO2t + FO2m1
+FO2g2 = FO2t + FO2m2
+FO2g3 = FO2t + FO2m3
+FO2g4 = FO2t + FO2m4
+FO2g5 = FO2t + FO2m5
+
+# Global photorespiration O2 uptake fraction
+fPR0 = FO2PRt / FO2g0
+fPR1 = FO2PRt / FO2g1
+fPR2 = FO2PRt / FO2g2
+fPR3 = FO2PRt / FO2g3
+fPR4 = FO2PRt / FO2g4
+fPR5 = FO2PRt / FO2g5
+
+# Terrestrial Mehler reaction uptake fraction
+fMRt0 = FO2MRt / FO2g0
+fMRt1 = FO2MRt / FO2g1
+fMRt2 = FO2MRt / FO2g2
+fMRt3 = FO2MRt / FO2g3
+fMRt4 = FO2MRt / FO2g4
+fMRt5 = FO2MRt / FO2g5
+
+# Marine Mehler reaction uptake fraction
+fMRm0 = FO2MRm0 / FO2g0
+fMRm1 = FO2MRm1 / FO2g1
+fMRm2 = FO2MRm2 / FO2g2
+fMRm3 = FO2MRm3 / FO2g3
+fMRm4 = FO2MRm4 / FO2g4
+fMRm5 = FO2MRm5 / FO2g5
+
+# Global cytochrome oxidase uptake fraction
+fCOX0 = 1 - fPR0 - fMRt0 - fMRm0 
+fCOX1 = 1 - fPR1 - fMRt1 - fMRm1 
+fCOX2 = 1 - fPR2 - fMRt2 - fMRm2 
+fCOX3 = 1 - fPR3 - fMRt3 - fMRm3
+fCOX4 = 1 - fPR4 - fMRt4 - fMRm4
+fCOX5 = 1 - fPR5 - fMRt5 - fMRm5
+
+# Global alternative oxidase uptake fraction 
+fAOX0 = fCOX0 * fAOXCOX
+fAOX1 = fCOX1 * fAOXCOX
+fAOX2 = fCOX2 * fAOXCOX
+fAOX3 = fCOX3 * fAOXCOX
+fAOX4 = fCOX4 * fAOXCOX
+fAOX5 = fCOX5 * fAOXCOX
+
+# Global cytochrome uptake fraction taking alternative oxidase into account
+fCOX0 = fCOX0 - fAOX0
+fCOX1 = fCOX1 - fAOX1
+fCOX2 = fCOX2 - fAOX2
+fCOX3 = fCOX3 - fAOX3
+fCOX4 = fCOX4 - fAOX4
+fCOX5 = fCOX5 - fAOX5
+
+#%% Calculate tGA
+
+# Relevant thetas
+
+# COX, PR, MR, and AOX Thetas from Hebrew University
+tCOXHU = 0.516 # tCOX = 0.516 from Helman2005
+tPRHU = 0.512 # tPR = 0.506 from Angert2003 and 0.512 from Helman2005
+tMRtHU = 0.526 # tMR = 0.526 for pea from Helman2005
+tMRmHU = 0.497 # tMR = 0.497 for Synechocystis from Helman2005
+tAOXHU = 0.514 # tAOX = 0.514 from Angert2003
+
+# COX, PR, MR, and AOX Thetas from Rice University
+tCOXRU = 0.520 # tCOX = 0.520 from Ash 2019
+tPRRU = tPRHU + 0.004 # tPR = 0.516 offset from Helman2005
+tMRtRU = tMRtHU + 0.004 # tMR = 0.530 offset from pea from Helman2005
+tMRmRU = tMRmHU + 0.004 # tMR = 0.501 offset from Synechocystis from Helman2005
+tAOXRU = tAOXHU + 0.004 # tAOX = 0.518 offset from Angert2003
+
+# Function determining tGA
+def tGA(fCOX, tCOX, fPR, tPR, fMRt, tMRt, fMRm, tMRm, fAOX, tAOX):
+    tGA = fCOX * tCOX + fPR * tPR + fMRt * tMRt + fMRm * tMRm + fAOX * tAOX
+    return tGA;
+
+# tGA for Hebrew University thetas
+
+# For 0, 10, 20, 30, 40, and 50% marine Mehler fractions
+tGAHU0 = tGA(fCOX0, tCOXHU, fPR0, tPRHU, fMRt0, tMRtHU, fMRm0, tMRmHU,
+             fAOX0, tAOXHU)
+tGAHU1 = tGA(fCOX1, tCOXHU, fPR1, tPRHU, fMRt1, tMRtHU, fMRm1, tMRmHU,
+             fAOX1, tAOXHU)
+tGAHU2 = tGA(fCOX2, tCOXHU, fPR2, tPRHU, fMRt2, tMRtHU, fMRm2, tMRmHU,
+             fAOX2, tAOXHU)
+tGAHU3 = tGA(fCOX3, tCOXHU, fPR3, tPRHU, fMRt3, tMRtHU, fMRm3, tMRmHU,
+            fAOX3, tAOXHU)
+tGAHU4 = tGA(fCOX4, tCOXHU, fPR4, tPRHU, fMRt4, tMRtHU, fMRm4, tMRmHU,
+            fAOX4, tAOXHU)
+tGAHU5 = tGA(fCOX5, tCOXHU, fPR5, tPRHU, fMRt5, tMRtHU, fMRm5, tMRmHU,
+            fAOX5, tAOXHU)
+
+# TGA for Rice university thetas
+
+# For 0, 10, 20, 30, 40, and 50% marine Mehler fractions
+tGARU0 = tGA(fCOX0, tCOXRU, fPR0, tPRRU, fMRt0, tMRtRU, fMRm0, tMRmRU,
+             fAOX0, tAOXRU)
+tGARU1 = tGA(fCOX1, tCOXRU, fPR1, tPRRU, fMRt1, tMRtRU, fMRm1, tMRmRU,
+             fAOX1, tAOXRU)
+tGARU2 = tGA(fCOX2, tCOXRU, fPR2, tPRRU, fMRt2, tMRtRU, fMRm2, tMRmRU,
+             fAOX2, tAOXRU)
+tGARU3 = tGA(fCOX3, tCOXRU, fPR3, tPRRU, fMRt3, tMRtRU, fMRm3, tMRmRU,
+             fAOX3, tAOXRU)
+tGARU4 = tGA(fCOX4, tCOXRU, fPR4, tPRRU, fMRt4, tMRtRU, fMRm4, tMRmRU,
+             fAOX4, tAOXRU)
+tGARU5 = tGA(fCOX5, tCOXRU, fPR5, tPRRU, fMRt5, tMRtRU, fMRm5, tMRmRU,
+             fAOX5, tAOXRU)
+
+# Append all
+tGA = np.append(tGAHU0, tGAHU1)
+tGA = np.append(tGA, tGAHU2)
+tGA = np.append(tGA, tGAHU3)
+tGA = np.append(tGA, tGAHU4)
+tGA = np.append(tGA, tGAHU5)
+tGA = np.append(tGA, tGARU0)
+tGA = np.append(tGA, tGARU1)
+tGA = np.append(tGA, tGARU2)
+tGA = np.append(tGA, tGARU3)
+tGA = np.append(tGA, tGARU4)
+tGA = np.append(tGA, tGARU5)
+
+#%% D17O2t as function of fCOX, fPR, and fMR
 
 # Lists for outputs of for loop
 sol = []
 fracfluxsol = []
 
-for tGAi in tGAall:
+for tGAi in tGA:
     
     # Terrestrial fraction of global primary production from Field 1998
     ft = 0.6
@@ -665,58 +844,126 @@ for tGAi in tGAall:
     # Add isotopes and fracflux outputs
     sol.append(isotopes)
     fracfluxsol.append(fracflux)
-    
+
 #%% Plots
 
-# Plotting D17O2t as a function of fCOX for different tCOX and tPR
+## Plotting D17O2t for Hebrew University and Rice University
 
 # Setting up figure parameters
-fig1 = plt.figure(figsize = (5, 5))
+fig1= plt.figure(figsize = (5, 5))
 fig1 = fig1.add_subplot(1, 1, 1)
-fig1.set(xlim = (0, 1), ylim = (-.6, -.25))
-fig1.grid()
+fig1.set(xlim = (0.509, 0.521), ylim = (-0.57, -0.29))
+fig1.set_facecolor('#F7F7F7')
+#fig1.grid()
 
-# D17 for different tCOX and tPR
-D17_tGAHH = []
-for i in sol[0:10]:
+# D17O2t for 30, 40, and 50% marine Mehler
+D17_tGAHU = []
+for i in sol[0:6]:
     D17 = i.loc['D17_O2t'].values
-    D17_tGAHH.append(D17)
-D17_tGAHH = np.hstack(D17_tGAHH)
+    D17_tGAHU.append(D17)
+D17_tGAHU = np.hstack(D17_tGAHU)
 
-D17_tGAAH = []
-for i in sol[10:20]:
+D17_tGARU = []
+for i in sol[6:12]:
     D17 = i.loc['D17_O2t'].values
-    D17_tGAAH.append(D17)
-D17_tGAAH = np.hstack(D17_tGAAH)
+    D17_tGARU.append(D17)
+D17_tGARU = np.hstack(D17_tGARU)
 
-# Plotting D17 of O2t as function of fraction terrestrial biosphere
-fig1.plot(fCOX, D17_tGAHH, color='#364b9a',
-          label='$\Theta_{COX}$ = 0.516 and $\Theta_{PR}$ = 0.512')
-fig1.plot(fCOX, D17_tGAAH, color='#a50026',
-          label='$\Theta_{COX}$ = 0.520 and $\Theta_{PR}$ = 0.512')
+# d17O and d18O of atmospheric O2 from BarkanLuz2011
+d17_O2tLB = -11.883
+d18_O2tLB = -23.324
+
+# R17 and R18 of LuzBarkan2011 data
+R17LB = rXSMOW / ((d17_O2tLB / 1e3) + 1)
+R18LB = rQSMOW / ((d18_O2tLB / 1e3) + 1)
+
+# d'17O and d'18O of LuzBarkan2011 data
+d17_O2tLB = deltaZ(R17LB, rXSMOW)
+d18_O2tLB = deltaZ(R18LB, rQSMOW)
+
+# D'17O of LuzBarkan2011 data
+D17_O2tLB = capD(d17_O2tLB, d18_O2tLB)
 
 # Plotting D17 of Wostbrock 2020
-plt.hlines(-0.441, 0, 1, colors='black', linestyles='dashed',
-           label="$\Delta'^{17}O$ $O_{2, Wostbrock2020}$")
+xWB = np.linspace(0.509, 0.521, 11)
+yWB = np.array([-0.441] * 11)
+fig1.plot(xWB, yWB, color='#77aadd', linestyle='solid', zorder=3.5)
+fig1.text(0.5095, -0.441 + 0.007, 'Wostbrock2020', color = '#77aadd', fontsize=8)
 
-# Labels and legend
-fig1.set_xlabel("$\Theta_{COX}$ Fraction of $\Theta_{\:O_2\:uptake}$ ($f_{COX}$)")
-fig1.set_ylabel("$\Delta'^{17}O$ $O_{2, troposphere}$ (‰)")
-fig1.legend(loc='best')
+# Plotting D17 of LuzBarkan2011
+xLB = np.linspace(0.509, 0.521, 11)
+yLB = np.array([-0.507] * 11)
+fig1.plot(xLB, yLB, color='#ee8866', linestyle='solid', zorder=3.5)
+fig1.text(0.51785, -0.507 + 0.007, 'LuzBarkan2011', color = '#ee8866', fontsize=8)
 
-# Functions converting to PR fraction and back
-def COX2PR(x):
-    COX2PR = 1 - x
-    return COX2PR;
+# Plotting Rice University D17O2t as a function of tGA
+fig1.scatter(tGARU0, D17_tGARU[0], color='#98CAE1', marker='^',
+             zorder=4.5) # 0 % MRm 
+fig1.text(tGARU0 - 0.0011, D17_tGARU[0] + 0.01, '0%', fontsize=8,
+          color='#98CAE1', zorder=4.5)
+fig1.scatter(tGARU1, D17_tGARU[1], color='#84B1D3', marker='^',
+             zorder=4.5) # 10 % MRm 
+fig1.text(tGARU1 - 0.0011, D17_tGARU[1] + 0.01, '10%', fontsize=8,
+          color='#84B1D3', zorder=4.5)
+fig1.scatter(tGARU2, D17_tGARU[2], color='#7197C5', marker='^',
+             zorder=4.5) # 20 % MRm 
+fig1.text(tGARU2 - 0.0011, D17_tGARU[2] + 0.01, '20%', fontsize=8,
+          color='#7197C5', zorder=4.5)
+fig1.scatter(tGARU3, D17_tGARU[3], color='#5D7EB6', marker='^',
+             zorder=4.5) # 30 % MRm 
+fig1.text(tGARU3 - 0.0011, D17_tGARU[3] + 0.01, '30%', fontsize=8,
+          color='#5D7EB6', zorder=4.5)
+fig1.scatter(tGARU4, D17_tGARU[4], color='#4A64A8', marker='^',
+             zorder=4.5) # 40 % MRm
+fig1.text(tGARU4 - 0.0011, D17_tGARU[4] + 0.01, '40%', fontsize=8,
+          color='#4A64A8', zorder=4.5)
+fig1.scatter(tGARU5, D17_tGARU[5], color='#364B9A', marker='^',
+             zorder=4.5, label='Rice University') # 50 % MRm
+fig1.text(tGARU5 - 0.0011, D17_tGARU[5] + 0.01, '50%', fontsize=8,
+          color='#364B9A', zorder=4.5)
 
-def PR2COX(x):
-    PR2COX = 1 - x
-    return PR2COX;
+# Plotting Hebrew University D17O2t as a function of tGA
+fig1.scatter(tGAHU0, D17_tGAHU[0], color='#FDB366', marker='o',
+             zorder=4.5) # 0 % MRm
+fig1.text(tGAHU0 + 0.0004, D17_tGAHU[0] - 0.015, '0%', fontsize=8,
+          color='#FDB366', zorder=4.5)
+fig1.scatter(tGAHU1, D17_tGAHU[1], color='#EB8F59', marker='o',
+             zorder=4.5) # 10 % MRm
+fig1.text(tGAHU1 + 0.0004, D17_tGAHU[1] - 0.015, '10%', fontsize=8,
+          color='#EB8F59', zorder=2)
+fig1.scatter(tGAHU2, D17_tGAHU[2], color='#DA6B4C', marker='o',
+             zorder=4.5) # 20 % MRm
+fig1.text(tGAHU2 + 0.0004, D17_tGAHU[2] - 0.015, '20%', fontsize=8,
+          color='#DA6B4C', zorder=4.5)
+fig1.scatter(tGAHU3, D17_tGAHU[3], color='#C84840', marker='o',
+             zorder=4.5) # 30 % MRm
+fig1.text(tGAHU3 + 0.0004, D17_tGAHU[3] - 0.015, '30%', fontsize=8,
+          color='#C84840', zorder=4.5)
+fig1.scatter(tGAHU4, D17_tGAHU[4], color='#B72433', marker='o',
+             zorder=4.5) # 40 % MRm
+fig1.text(tGAHU4 + 0.0004, D17_tGAHU[4] - 0.015, '40%', fontsize=8,
+          color='#B72433', zorder=4.5)
+fig1.scatter(tGAHU5, D17_tGAHU[5], color='#A50026', marker='o',
+             zorder=4.5, label='Hebrew University') # 50 % MRm
+fig1.text(tGAHU5 + 0.0004, D17_tGAHU[5] - 0.015, '50%', fontsize=8,
+          color='#A50026', zorder=4.5)
 
-# Setting up second axis
-fig1ax2 = fig1.secondary_xaxis('top', functions=(COX2PR, PR2COX))
-fig1ax2.set_xlabel('$\Theta_{PR}$ Fraction of $\Theta_{\:O_2\:uptake}$ ($f_{PR}$)')
+# x and y labels
+fig1.set_xlabel("$\Theta_{\:O_2\:uptake}$")
+fig1.set_ylabel("$\Delta'^{17}O$ $O_{2, trop}$ (‰)")
+
+# Legend
+fig1.legend(loc='best', edgecolor='#F7F7F7', facecolor='#F7F7F7',
+            labelcolor=['#364B9A', '#A50026'])
 
 # Saving figure
 plt.tight_layout()
-plt.savefig('D17O2tfCOXfPR.jpg', dpi=800)
+plt.savefig('D17O2vtGA.jpg', dpi=800)
+
+print("The global marine O2 flux of the Mehler reaction assuming it takes up" +
+      " 30 percent of gross production is " + str(FO2MRm3) + '.\n')
+print("The global marine O2 flux of the Mehler reaction assuming it takes up" +
+      " 40 percent of gross production is " + str(FO2MRm4) + '.\n')
+print("The global marine O2 flux of the Mehler reaction assuming it takes up" +
+      " 50 percent of gross production is " + str(FO2MRm5) + '.')
+
