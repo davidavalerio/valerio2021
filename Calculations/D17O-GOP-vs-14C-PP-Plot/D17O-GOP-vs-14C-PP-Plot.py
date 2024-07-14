@@ -3,8 +3,8 @@
 """
 Created on Fri Mar 12 09:51:31 2021
 
-This file plots estimates of gross oxygen production based on oxygen triple-isotope measurements of seawater against estimates of net carbon fixation based on C14 measurements.
-It is Figure 10 in Valerio 2021.
+This file plots estimates of gross oxygen production based on oxygen triple-isotope measurements of seawater against estimates
+of net carbon fixation based on C14 measurements. It is Figure 10 in Valerio 2021.
 
 @author: david
 """

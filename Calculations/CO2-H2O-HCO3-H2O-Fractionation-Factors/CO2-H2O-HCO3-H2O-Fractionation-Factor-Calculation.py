@@ -3,7 +3,8 @@
 """
 Created on Tue May 18 15:58:04 2021
 
-This file defines functions for calculating the fractionaction factor between CO2 and H2O and HCO3- and H20 as a function of temperature and plots them as a function of temperature. 
+This file defines functions for calculating the fractionaction factor between CO2 and H2O and HCO3- and H20 as a function
+of temperature and plots them as a function of temperature.
 
 @author: david
 """
@@ -13,7 +14,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-#%% Defining functions for the equations calculating the fractionation factor between CO2 and H2O and HCO3- and H2O as a function of temperature from Beck et al. 2005
+#%% Defining functions for equations calculating CO2-H2O and HCO3-H2O alphas as a function of temperature from Beck et al. 2005
+
 def aCO2H2O(T):
     aCO2H2O = np.exp((2.52 * (10 ** 6 * T ** -2) + 12.12) / 1000)
     return aCO2H2O;
