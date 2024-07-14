@@ -2,6 +2,8 @@
 """
 Created on Mon Aug 12 15:01:50 2019
 
+This file contains the calibrated model that was used to produce all of the plots in Valerio 2021.
+
 @author: dvale
 """
 
