@@ -2,6 +2,9 @@
 """
 Created on Mon Aug 12 15:01:50 2019
 
+This file runs Valerio 2021's split biosphere box model to plot how the oxygen-triple isotope composition of the troposphere changes
+with varying percentages of global primary production from the terrestrial and marine biospheres.
+
 @author: dvale
 """
 
