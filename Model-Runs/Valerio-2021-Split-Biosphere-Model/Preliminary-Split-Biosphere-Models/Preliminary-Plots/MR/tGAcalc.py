@@ -870,4 +870,3 @@ print("The global marine O2 flux of the Mehler reaction assuming it takes up" +
       " 40 percent of gross production is " + str(FO2MRm4) + '.\n')
 print("The global marine O2 flux of the Mehler reaction assuming it takes up" +
       " 50 percent of gross production is " + str(FO2MRm5) + '.')
-
